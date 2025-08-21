@@ -6,7 +6,7 @@ plugins {
 
 android {
     namespace = "com.example.verbrauchs_app"
-    compileSdk = 34 // Aktualisiert auf 34
+    compileSdk = 35
 
     // Passend zu deiner aktuellen Umgebung
     ndkVersion = "27.0.12077973"
