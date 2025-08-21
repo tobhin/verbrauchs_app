@@ -6,7 +6,7 @@ plugins {
 
 android {
     namespace = "com.example.verbrauchs_app"
-    compileSdk = flutter.compileSdkVersion
+    compileSdk = 34 // Aktualisiert auf 34
 
     // Passend zu deiner aktuellen Umgebung
     ndkVersion = "27.0.12077973"
@@ -24,7 +24,7 @@ android {
 
     defaultConfig {
         applicationId = "com.example.verbrauchs_app"
-        minSdk = flutter.minSdkVersion
+        minSdk = 21 // ERHÖHT auf 21 für ML Kit
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
@@ -61,4 +61,3 @@ dependencies {
     // ML Kit Text Recognition Artefakte (alle Skripte)
     implementation("com.google.mlkit:text-recognition:16.0.0")
 }
-

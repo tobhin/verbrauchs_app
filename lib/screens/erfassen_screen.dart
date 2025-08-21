@@ -29,6 +29,9 @@ class _ErfassenScreenState extends State<ErfassenScreen> {
   String? _imagePath;
   bool _isSaving = false;
   Reading? _lastReading;
+  
+  // HINZUGEFÜGT: Statusvariable für den OCR-Scanvorgang
+  bool _isScanning = false;
 
   final Map<String, IconData> _iconMap = {
     'water_drop': Icons.water_drop, 'bolt': Icons.bolt, 'local_fire_department': Icons.local_fire_department,
@@ -99,6 +102,8 @@ class _ErfassenScreenState extends State<ErfassenScreen> {
   }
 
   Future<void> _pickImage() async {
+    if (_isScanning) return; // Verhindert doppeltes Ausführen
+
     final messenger = ScaffoldMessenger.of(context);
     final src = await showModalBottomSheet<ImageSource?>(
       context: context,
@@ -132,7 +137,12 @@ class _ErfassenScreenState extends State<ErfassenScreen> {
     final ext = x.path.split('.').last;
     final save = '${dir.path}/img_${DateTime.now().millisecondsSinceEpoch}.$ext';
     await File(x.path).copy(save);
-    setState(() => _imagePath = save);
+    
+    setState(() {
+      _imagePath = save;
+      _isScanning = true; // Ladeindikator anzeigen
+    });
+    
     try {
       final meterTypeName = _selectedMeterType?.name ?? '';
       MeterTypeForOcr meterTypeLabel;
@@ -167,6 +177,11 @@ class _ErfassenScreenState extends State<ErfassenScreen> {
       }
     } catch (e) {
       messenger.showSnackBar(const SnackBar(content: Text('OCR fehlgeschlagen')));
+    } finally {
+      // WICHTIG: Ladeindikator immer ausblenden
+      if(mounted) {
+        setState(() => _isScanning = false);
+      }
     }
   }
 
@@ -185,7 +200,7 @@ class _ErfassenScreenState extends State<ErfassenScreen> {
         meterId: _selected!.id!,
         date: DateTime.now(),
         ht: _parseNum(_htCtrl.text)!,
-        nt: _parseNum(_ntCtrl.text)!,
+        nt: _parseNum(_ntCtrl.text), // NT ist optional
         imagePath: _imagePath,
         tariffId: tariff?.id,
       );
@@ -280,11 +295,10 @@ class _ErfassenScreenState extends State<ErfassenScreen> {
             const Center(child: Text('Bitte im Menü zuerst einen Zähler anlegen.'))
           else ...[
             DropdownButtonFormField<Meter>(
-              // BUG-009 FIX: ValueKey zwingt das Widget zur Neuzeichnung
               key: ValueKey(_selected),
               isExpanded: true,
               value: _selected,
-              items: _allMeters.map((m) => DropdownMenuItem(value: m, child: Text(m.name))).toList(),
+              items: _allMeters.map((m) => DropdownMenuItem(value: m, child: Text(m.name, overflow: TextOverflow.ellipsis))).toList(),
               onChanged: _onMeterChanged,
               decoration: const InputDecoration(labelText: 'Zähler wählen', border: OutlineInputBorder()),
             ),
@@ -298,7 +312,7 @@ class _ErfassenScreenState extends State<ErfassenScreen> {
                       controller: _htCtrl,
                       keyboardType: const TextInputType.numberWithOptions(decimal: true),
                       decoration: InputDecoration(
-                        labelText: 'HT (${_selected?.number ?? ""})',
+                        labelText: 'HT-Wert (${_selected?.number ?? ""})',
                         hintText: _lastReading?.ht != null ? 'Letzter Wert: ${_lastReading!.ht}' : 'Neuen Wert eingeben',
                         border: const OutlineInputBorder(),
                       ),
@@ -314,14 +328,17 @@ class _ErfassenScreenState extends State<ErfassenScreen> {
                       controller: _ntCtrl,
                       keyboardType: const TextInputType.numberWithOptions(decimal: true),
                       decoration: InputDecoration(
-                        labelText: 'NT (${_selected?.number ?? ""})',
+                        labelText: 'NT-Wert (${_selected?.number ?? ""})',
                         hintText: _lastReading?.nt != null ? 'Letzter Wert: ${_lastReading!.nt}' : 'Neuen Wert eingeben',
                         border: const OutlineInputBorder(),
                       ),
                       validator: (v) {
-                        final val = _parseNum(v);
-                        if (val == null) return 'Bitte eine Zahl eingeben';
-                        if (_lastReading?.nt != null && val < _lastReading!.nt!) return 'Wert darf nicht niedriger sein als der letzte!';
+                        // NT ist optional, Validierung nur wenn nicht leer
+                        if (v != null && v.isNotEmpty) {
+                          final val = _parseNum(v);
+                          if (val == null) return 'Bitte eine gültige Zahl eingeben';
+                           if (_lastReading?.nt != null && val < _lastReading!.nt!) return 'Wert darf nicht niedriger sein als der letzte!';
+                        }
                         return null;
                       },
                     ),
@@ -343,13 +360,22 @@ class _ErfassenScreenState extends State<ErfassenScreen> {
                     ),
                   ],
                   const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      ElevatedButton.icon(onPressed: _pickImage, icon: const Icon(Icons.add_a_photo), label: const Text('Foto')),
-                      const SizedBox(width: 8),
-                      const Expanded(child: Text('Wert per Kamera erkennen')),
-                    ],
-                  ),
+                  // HINZUGEFÜGT: Zeigt entweder den Button oder einen Ladeindikator an
+                  _isScanning 
+                    ? const Row(
+                        children: [
+                          SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 3)),
+                          SizedBox(width: 16),
+                          Expanded(child: Text('Foto wird analysiert...')),
+                        ],
+                      )
+                    : Row(
+                      children: [
+                        ElevatedButton.icon(onPressed: _pickImage, icon: const Icon(Icons.add_a_photo), label: const Text('Foto')),
+                        const SizedBox(width: 8),
+                        const Expanded(child: Text('Wert per Kamera erkennen')),
+                      ],
+                    ),
                   if (_imagePath != null) ...[
                     const SizedBox(height: 8),
                     Stack(
@@ -371,9 +397,12 @@ class _ErfassenScreenState extends State<ErfassenScreen> {
                   ],
                   const SizedBox(height: 24),
                   FilledButton.icon(
+                    style: FilledButton.styleFrom(
+                      minimumSize: const Size(double.infinity, 50),
+                    ),
                     onPressed: _isSaving ? null : _save,
                     icon: _isSaving
-                        ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
+                        ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white,))
                         : const Icon(Icons.save),
                     label: const Text('Speichern'),
                   ),

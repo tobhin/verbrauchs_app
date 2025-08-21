@@ -28,6 +28,9 @@ class NotificationService {
 
   Future<void> init() async {
     if (_initialized) return;
+    
+    // HINZUGEFÜGT: Proaktive Anfrage der Berechtigungen beim Initialisieren
+    await requestPermissions();
 
     const androidInit = AndroidInitializationSettings('@mipmap/ic_launcher');
     final androidPlugin = _plugin.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
