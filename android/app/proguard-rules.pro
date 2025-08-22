@@ -1,4 +1,8 @@
 # Flutter's default ProGuard rules.
+# You can customize this file to optimize your application's size.
+# For more information, see https://flutter.dev/docs/deployment/android#reviewing-the-proguard-rules
+
+# The following rules are used by default Flutter apps.
 -dontwarn io.flutter.embedding.**
 -keep class io.flutter.app.** { *; }
 -keep class io.flutter.plugin.** { *; }
@@ -9,9 +13,7 @@
     *** any;
 }
 
-# ERWEITERTE REGELN FÜR GOOGLE ML KIT
-# Diese umfassenderen Regeln verhindern, dass R8 dynamisch geladene
-# Klassen und Abhängigkeiten von ML Kit und den Google Mobile Services (GMS) entfernt.
+# Erweiterte Regeln für Google ML Kit
 -keep public class com.google.mlkit.** {*;}
 -keep public class com.google.android.gms.internal.mlkit_vision_common.** {*;}
--keep public class com.google.android.gms.internal.mlkit_vision_text_common.** {*;}ision_text_common.** { *; }
+-keep public class com.google.android.gms.internal.mlkit_vision_text_common.** {*;}
