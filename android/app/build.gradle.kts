@@ -18,7 +18,7 @@ val flutterVersionName = localProperties.getProperty("flutter.versionName") ?: "
 
 android {
     namespace = "com.example.verbrauchs_app"
-    compileSdk = 35
+    compileSdk = 36 // Angepasst auf 36, um Plugin-Anforderungen zu erfüllen
 
     compileOptions {
         isCoreLibraryDesugaringEnabled = true
@@ -32,8 +32,8 @@ android {
 
     defaultConfig {
         applicationId = "com.example.verbrauchs_app"
-        minSdkVersion(21) // Angepasst auf 21, wie für ML Kit benötigt (flutter.minSdkVersion war ungültig)
-        targetSdk = 34
+        minSdkVersion(23) // Angepasst auf 23, um Flutter-Anforderungen zu erfüllen
+        targetSdk = 36 // Angepasst auf 36 für Konsistenz mit compileSdk
         versionCode = flutterVersionCode
         versionName = flutterVersionName
         multiDexEnabled = true
