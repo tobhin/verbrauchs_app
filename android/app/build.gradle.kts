@@ -1,24 +1,10 @@
 import java.util.Properties
-import java.io.FileInputStream
-
-// Hilfsfunktion, um die Version aus der pubspec.yaml zu lesen
-fun getPubspecVersion(): Pair<String, String> {
-    val pubspecFile = rootProject.file("../pubspec.yaml")
-    val pubspecText = pubspecFile.readText()
-    val versionLine = pubspecText.lines().first { it.startsWith("version:") }
-    val versionParts = versionLine.split(":").last().trim().split("+")
-    val versionName = versionParts[0]
-    val versionCode = if (versionParts.size > 1) versionParts[1] else "1"
-    return Pair(versionName, versionCode)
-}
 
 plugins {
     id("com.android.application")
     id("kotlin-android")
     id("dev.flutter.flutter-gradle-plugin")
 }
-
-val (pubspecVersionName, pubspecVersionCode) = getPubspecVersion()
 
 android {
     namespace = "com.example.verbrauchs_app"
@@ -38,9 +24,10 @@ android {
         applicationId = "com.example.verbrauchs_app"
         minSdk = 21
         targetSdk = 34
-        // KORRIGIERT: Liest jetzt direkt aus der pubspec.yaml
-        versionCode = pubspecVersionCode.toInt()
-        versionName = pubspecVersionName
+        // KORRIGIERT: Feste Werte, um das Überschreiben durch das Flutter-Tool zu verhindern.
+        // BITTE PASSE DIESE WERTE AN DEINE pubspec.yaml AN!
+        versionCode = 4 
+        versionName = "1.0.4"
         multiDexEnabled = true
     }
 
