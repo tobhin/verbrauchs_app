@@ -21,7 +21,6 @@ android {
 
     compileOptions {
         isCoreLibraryDesugaringEnabled = true
-        // Wir erzwingen Java 8, um maximale Kompatibilität mit allen Plugins zu gewährleisten.
         sourceCompatibility = JavaVersion.VERSION_1_8
         targetCompatibility = JavaVersion.VERSION_1_8
     }
@@ -36,12 +35,15 @@ android {
         targetSdk = 34
         versionCode = flutterVersionCode
         versionName = flutterVersionName
-        multiDexEnabled = true // Wichtig für Apps mit vielen Plugins
+        multiDexEnabled = true
     }
 
     buildTypes {
         release {
             signingConfig = signingConfigs.getByName("debug")
+            
+            // HINZUGEFÜGT: Diese Zeile weist den Build an, unsere Proguard-Regeln zu verwenden.
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
     }
 }
