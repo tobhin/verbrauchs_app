@@ -1,88 +1,71 @@
 import 'package:flutter/material.dart';
-import 'screens/erfassen_screen.dart';
-import 'screens/werte_screen.dart';
-import 'screens/menu_screen.dart';
+import 'package:flutter/services.dart';
+import 'package:timezone/data/latest.dart' as tz;
+// Die NotificationService Zeile wird hier nicht mehr importiert
+import 'screens/app_screen.dart';
+import 'services/database_service.dart';
 
-class AppScreen extends StatefulWidget {
-  final void Function(ThemeMode) onChangeTheme;
-  final ValueNotifier<ThemeMode> themeModeListenable;
+void main() async {
+  // Die meisten Initialisierungen sind sicher und können hier bleiben.
+  WidgetsFlutterBinding.ensureInitialized();
 
-  const AppScreen({
-    super.key,
-    required this.onChangeTheme,
-    required this.themeModeListenable,
-  });
+  // Datenbank initialisieren
+  await AppDb.instance.init();
 
-  @override
-  State<AppScreen> createState() => _AppScreenState();
+  // Zeitzonen initialisieren
+  tz.initializeTimeZones();
+
+  // ENTFERNT: Diese Zeile war der wahrscheinliche Verursacher des Absturzes.
+  // await NotificationService().init();
+
+  // App nur im Hochformat erlauben
+  await SystemChrome.setPreferredOrientations([
+    DeviceOrientation.portraitUp,
+    DeviceOrientation.portraitDown,
+  ]);
+
+  runApp(const VerbrauchsApp());
 }
 
-class _AppScreenState extends State<AppScreen> {
-  int _currentIndex = 0;
-  final PageController _pageController = PageController();
-
-  final List<String> _titles = ['Erfassen', 'Werte', 'Menü'];
+// Dein ursprünglicher App-Code
+class VerbrauchsApp extends StatefulWidget {
+  const VerbrauchsApp({super.key});
 
   @override
-  void dispose() {
-    _pageController.dispose();
-    super.dispose();
-  }
+  State<VerbrauchsApp> createState() => _VerbrauchsAppState();
+}
 
-  void _onTabTapped(int index) {
-    _pageController.animateToPage(
-      index,
-      duration: const Duration(milliseconds: 300),
-      curve: Curves.easeInOut,
-    );
-  }
+class _VerbrauchsAppState extends State<VerbrauchsApp> {
+  final ValueNotifier<ThemeMode> _themeMode = ValueNotifier(ThemeMode.system);
 
-  void _onPageChanged(int index) {
-    setState(() {
-      _currentIndex = index;
-    });
+  void _changeTheme(ThemeMode themeMode) {
+    _themeMode.value = themeMode;
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(_titles[_currentIndex]),
-        centerTitle: true,
-      ),
-      body: PageView(
-        controller: _pageController,
-        onPageChanged: _onPageChanged,
-        children: [
-          const ErfassenScreen(),
-          const WerteScreen(),
-          MenuScreen(
-            onChangeTheme: widget.onChangeTheme,
-            themeModeListenable: widget.themeModeListenable,
+    return ValueListenableBuilder<ThemeMode>(
+      valueListenable: _themeMode,
+      builder: (context, themeMode, child) {
+        return MaterialApp(
+          title: 'Verbrauchswerte',
+          theme: ThemeData(
+            useMaterial3: true,
+            brightness: Brightness.light,
+            colorSchemeSeed: Colors.blue,
           ),
-        ],
-      ),
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _currentIndex,
-        onTap: _onTabTapped,
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.edit_outlined),
-            activeIcon: Icon(Icons.edit),
-            label: 'Erfassen',
+          darkTheme: ThemeData(
+            useMaterial3: true,
+            brightness: Brightness.dark,
+            colorSchemeSeed: Colors.blue,
           ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.bar_chart_outlined),
-            activeIcon: Icon(Icons.bar_chart),
-            label: 'Werte',
+          themeMode: themeMode,
+          home: AppScreen(
+            onChangeTheme: _changeTheme,
+            themeModeListenable: _themeMode,
           ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.menu_outlined),
-            activeIcon: Icon(Icons.menu),
-            label: 'Menü',
-          ),
-        ],
-      ),
+        );
+      },
     );
   }
 }

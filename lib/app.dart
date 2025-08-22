@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'screens/erfassen_screen.dart';
 import 'screens/werte_screen.dart';
 import 'screens/menu_screen.dart';
+import 'package:verbrauchs_app/utils/notification_service.dart';
 
 class AppScreen extends StatefulWidget {
   final void Function(ThemeMode) onChangeTheme;
@@ -22,6 +23,18 @@ class _AppScreenState extends State<AppScreen> {
   final PageController _pageController = PageController();
 
   final List<String> _titles = ['Erfassen', 'Werte', 'Menü'];
+
+  // HINZUGEFÜGT: Der NotificationService wird jetzt sicher hier initialisiert.
+  @override
+  void initState() {
+    super.initState();
+    _initServices();
+  }
+
+  Future<void> _initServices() async {
+    // Sicherer Ort, um Services zu initialisieren, die eine laufende App-Engine benötigen.
+    await NotificationService().init();
+  }
 
   @override
   void dispose() {
