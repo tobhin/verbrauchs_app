@@ -53,6 +53,7 @@ class _MenuScreenState extends State<MenuScreen> {
       }
       final meterReminders = await AppDb.instance.fetchReminders(meter.id!);
       rems[meter.id!] = meterReminders;
+
       final readings = await AppDb.instance.fetchReadingsForMeter(meter.id!);
       counts[meter.id!] = readings.length;
     }

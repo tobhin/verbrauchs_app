@@ -6,6 +6,16 @@ plugins {
     id("dev.flutter.flutter-gradle-plugin")
 }
 
+// Dies ist der moderne Standardweg, um auf lokale Konfigurationen zuzugreifen.
+val localProperties = Properties()
+val localPropertiesFile = rootProject.file("local.properties")
+if (localPropertiesFile.exists()) {
+    localProperties.load(localPropertiesFile.inputStream())
+}
+
+val flutterVersionCode = localProperties.getProperty("flutter.versionCode")?.toInt() ?: 1
+val flutterVersionName = localProperties.getProperty("flutter.versionName") ?: "1.0"
+
 android {
     namespace = "com.example.verbrauchs_app"
     compileSdk = 35
@@ -22,12 +32,10 @@ android {
 
     defaultConfig {
         applicationId = "com.example.verbrauchs_app"
-        minSdk = 21
+        minSdkVersion(21) // Angepasst auf 21, wie für ML Kit benötigt (flutter.minSdkVersion war ungültig)
         targetSdk = 34
-        // KORRIGIERT: Feste Werte, um das Überschreiben durch das Flutter-Tool zu verhindern.
-        // BITTE PASSE DIESE WERTE AN DEINE pubspec.yaml AN!
-        versionCode = 4 
-        versionName = "1.0.4"
+        versionCode = flutterVersionCode
+        versionName = flutterVersionName
         multiDexEnabled = true
     }
 
