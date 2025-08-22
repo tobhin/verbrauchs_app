@@ -1,4 +1,3 @@
-// HINZUGEFÜGT: Der fehlende Import, der den Fehler behebt
 import java.util.Properties
 
 plugins {
@@ -7,7 +6,6 @@ plugins {
     id("dev.flutter.flutter-gradle-plugin")
 }
 
-// Dies ist die Kotlin-Version, um die Properties zu lesen
 val localProperties = Properties()
 val localPropertiesFile = rootProject.file("local.properties")
 if (localPropertiesFile.exists()) {
@@ -23,12 +21,13 @@ android {
 
     compileOptions {
         isCoreLibraryDesugaringEnabled = true
-        sourceCompatibility = JavaVersion.VERSION_11
-        targetCompatibility = JavaVersion.VERSION_11
+        // Wir erzwingen Java 8, um maximale Kompatibilität mit allen Plugins zu gewährleisten.
+        sourceCompatibility = JavaVersion.VERSION_1_8
+        targetCompatibility = JavaVersion.VERSION_1_8
     }
 
     kotlinOptions {
-        jvmTarget = "11"
+        jvmTarget = "1.8"
     }
 
     defaultConfig {
@@ -37,6 +36,7 @@ android {
         targetSdk = 34
         versionCode = flutterVersionCode
         versionName = flutterVersionName
+        multiDexEnabled = true // Wichtig für Apps mit vielen Plugins
     }
 
     buildTypes {
