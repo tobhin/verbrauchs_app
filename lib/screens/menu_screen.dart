@@ -2,8 +2,9 @@
 
 import 'package:flutter/material.dart';
 import '../services/database_service.dart';
-import '../utils/excel_helper.dart';
-import '../utils/pdf_helper.dart';
+// KORRIGIERT: Pfade zu package-absoluten Pfaden geändert für mehr Stabilität
+import 'package:verbrauchs_app/utils/excel_helper.dart'; 
+import 'package:verbrauchs_app/utils/pdf_helper.dart';
 
 class MenuScreen extends StatefulWidget {
   final void Function(ThemeMode) onChangeTheme;
@@ -20,7 +21,7 @@ class MenuScreen extends StatefulWidget {
 }
 
 class _MenuScreenState extends State<MenuScreen> {
-  // ENTFERNT: Die unbenutzte _iconMap wurde gelöscht.
+  // ENTFERNT: Die ungenutzte _iconMap wurde gelöscht.
 
   @override
   Widget build(BuildContext context) {
@@ -126,7 +127,9 @@ class _MenuScreenState extends State<MenuScreen> {
             onPressed: () async {
               await AppDb.instance.deleteDatabaseFile();
               Navigator.pop(ctx);
-              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Alle Daten wurden gelöscht.')));
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Alle Daten wurden gelöscht.')));
+              }
             },
             child: const Text('Ja, alles löschen'),
           ),
