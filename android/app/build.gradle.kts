@@ -4,47 +4,49 @@ plugins {
     id("dev.flutter.flutter-gradle-plugin")
 }
 
+def localProperties = new Properties()
+def localPropertiesFile = rootProject.file("local.properties")
+if (localPropertiesFile.exists()) {
+    localPropertiesFile.withReader("UTF-8") { reader ->
+        localProperties.load(reader)
+    }
+}
+
+def flutterVersionCode = localProperties.getProperty("flutter.versionCode")
+if (flutterVersionCode == null) {
+    flutterVersionCode = "1"
+}
+
+def flutterVersionName = localProperties.getProperty("flutter.versionName")
+if (flutterVersionName == null) {
+    flutterVersionName = "1.0"
+}
+
 android {
     namespace = "com.example.verbrauchs_app"
-    compileSdk = 35
-
-    // Passend zu deiner aktuellen Umgebung
-    ndkVersion = "27.0.12077973"
+    compileSdk = 35 // Wir verwenden die neueste SDK-Version, die wir zuvor ermittelt haben
 
     compileOptions {
+        // HINZUGEFÜGT: Für flutter_local_notifications benötigt
+        coreLibraryDesugaringEnabled true
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
-        // Wichtig für flutter_local_notifications
-        isCoreLibraryDesugaringEnabled = true
     }
 
     kotlinOptions {
-        jvmTarget = JavaVersion.VERSION_11.toString()
+        jvmTarget = "11"
     }
 
     defaultConfig {
         applicationId = "com.example.verbrauchs_app"
-        minSdk = 21 // ERHÖHT auf 21 für ML Kit
+        minSdk = 21 // Wir setzen das Minimum auf 21, wie für ML Kit benötigt
         targetSdk = flutter.targetSdkVersion
-        versionCode = flutter.versionCode
-        versionName = flutter.versionName
+        versionCode = flutterVersionCode.toInteger()
+        versionName = flutterVersionName
     }
 
     buildTypes {
-        getByName("debug") {
-            isMinifyEnabled = false
-        }
-        getByName("profile") {
-            isMinifyEnabled = false
-        }
-        getByName("release") {
-            isMinifyEnabled = true
-            isShrinkResources = true
-            proguardFiles(
-                getDefaultProguardFile("proguard-android-optimize.txt"),
-                "proguard-rules.pro"
-            )
-            // Debug-Key für Testbuilds – später für PlayStore ersetzen
+        release {
             signingConfig = signingConfigs.getByName("debug")
         }
     }
@@ -55,9 +57,9 @@ flutter {
 }
 
 dependencies {
-    // schon vorhanden:
+    // HINZUGEFÜGT: Für flutter_local_notifications benötigt
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.0.4")
 
-    // ML Kit Text Recognition Artefakte (alle Skripte)
+    // HINZUGEFÜGT: Für die Texterkennung benötigt
     implementation("com.google.mlkit:text-recognition:16.0.0")
 }
