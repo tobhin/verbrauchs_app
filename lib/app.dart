@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'screens/erfassen_screen.dart';
 import 'screens/werte_screen.dart';
 import 'screens/menu_screen.dart';
-import 'package:verbrauchs_app/utils/notification_service.dart';
+import 'package:verbrauchs_app/services/notification_service.dart';
 
 class AppScreen extends StatefulWidget {
   final void Function(ThemeMode) onChangeTheme;
