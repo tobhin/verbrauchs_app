@@ -118,13 +118,13 @@ class AppDb {
 
   Future<void> _seedMeterTypes(Database db) async {
     final types = [
-      MeterType(id: 1, name: 'Wasser', iconName: 'water_drop', isDefault: true),
-      MeterType(id: 2, name: 'Strom', iconName: 'bolt', isDefault: true),
-      MeterType(id: 3, name: 'Gas', iconName: 'local_fire_department', isDefault: true),
-      MeterType(id: 4, name: 'Heizung', iconName: 'thermostat', isDefault: true),
-      MeterType(id: 5, name: 'Solar', iconName: 'solar_power', isDefault: true),
-      MeterType(id: 6, name: 'Abwasser', iconName: 'waves', isDefault: true),
-      MeterType(id: 7, name: 'Wärmepumpe', iconName: 'heat_pump', isDefault: true),
+      const MeterType(id: 1, name: 'Wasser', iconName: 'water_drop', isDefault: true),
+      const MeterType(id: 2, name: 'Strom', iconName: 'bolt', isDefault: true),
+      const MeterType(id: 3, name: 'Gas', iconName: 'local_fire_department', isDefault: true),
+      const MeterType(id: 4, name: 'Heizung', iconName: 'thermostat', isDefault: true),
+      const MeterType(id: 5, name: 'Solar', iconName: 'solar_power', isDefault: true),
+      const MeterType(id: 6, name: 'Abwasser', iconName: 'waves', isDefault: true),
+      const MeterType(id: 7, name: 'Wärmepumpe', iconName: 'heat_pump', isDefault: true),
     ];
     for (final type in types) {
       await db.insert('meter_types', type.toMap(), conflictAlgorithm: ConflictAlgorithm.ignore);
@@ -133,10 +133,10 @@ class AppDb {
 
   Future<void> _seedInitialMeters(Database db) async {
     final meters = [
-      Meter(name: 'Strom HT/NT', meterTypeId: 2, number: '538500-5003305', isFavorite: true),
-      Meter(name: 'Wasser', meterTypeId: 1, number: 'GB22A3-1600204', isFavorite: true),
-      Meter(name: 'Schmutzwasser', meterTypeId: 6, number: '32046368', isFavorite: true),
-      Meter(name: 'Gas', meterTypeId: 3, number: 'C21202-0501782', isFavorite: true),
+      const Meter(name: 'Strom HT/NT', meterTypeId: 2, number: '538500-5003305', isFavorite: true),
+      const Meter(name: 'Wasser', meterTypeId: 1, number: 'GB22A3-1600204', isFavorite: true),
+      const Meter(name: 'Schmutzwasser', meterTypeId: 6, number: '32046368', isFavorite: true),
+      const Meter(name: 'Gas', meterTypeId: 3, number: 'C21202-0501782', isFavorite: true),
     ];
     for (final meter in meters) {
       await db.insert('meters', meter.toMap(), conflictAlgorithm: ConflictAlgorithm.ignore);

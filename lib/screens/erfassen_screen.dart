@@ -198,7 +198,10 @@ class _ErfassenScreenState extends State<ErfassenScreen> {
     _ntCtrl.clear();
     _valueCtrl.clear();
     _clearImage();
-    if (context.mounted) FocusScope.of(context).unfocus();
+    if (context.mounted) {
+      // ignore: use_build_context_synchronously
+      FocusScope.of(context).unfocus();
+    }
     await _onMeterChanged(_selected);
     setState(() => _isSaving = false);
     if (mounted) {
