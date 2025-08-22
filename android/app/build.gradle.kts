@@ -4,31 +4,23 @@ plugins {
     id("dev.flutter.flutter-gradle-plugin")
 }
 
-def localProperties = new Properties()
-def localPropertiesFile = rootProject.file("local.properties")
+// Dies ist die Kotlin-Version, um die Properties zu lesen
+val localProperties = java.util.Properties()
+val localPropertiesFile = rootProject.file("local.properties")
 if (localPropertiesFile.exists()) {
-    localPropertiesFile.withReader("UTF-8") { reader ->
-        localProperties.load(reader)
-    }
+    localProperties.load(localPropertiesFile.inputStream())
 }
 
-def flutterVersionCode = localProperties.getProperty("flutter.versionCode")
-if (flutterVersionCode == null) {
-    flutterVersionCode = "1"
-}
-
-def flutterVersionName = localProperties.getProperty("flutter.versionName")
-if (flutterVersionName == null) {
-    flutterVersionName = "1.0"
-}
+val flutterVersionCode = localProperties.getProperty("flutter.versionCode")?.toInt() ?: 1
+val flutterVersionName = localProperties.getProperty("flutter.versionName") ?: "1.0"
 
 android {
     namespace = "com.example.verbrauchs_app"
-    compileSdk = 35 // Wir verwenden die neueste SDK-Version, die wir zuvor ermittelt haben
+    compileSdk = 35
 
     compileOptions {
         // HINZUGEFÜGT: Für flutter_local_notifications benötigt
-        coreLibraryDesugaringEnabled true
+        isCoreLibraryDesugaringEnabled = true
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
     }
@@ -39,9 +31,9 @@ android {
 
     defaultConfig {
         applicationId = "com.example.verbrauchs_app"
-        minSdk = 21 // Wir setzen das Minimum auf 21, wie für ML Kit benötigt
-        targetSdk = flutter.targetSdkVersion
-        versionCode = flutterVersionCode.toInteger()
+        minSdk = 21
+        targetSdk = 34 // targetSdk wird oft noch auf 34 belassen, compileSdk ist wichtiger
+        versionCode = flutterVersionCode
         versionName = flutterVersionName
     }
 
