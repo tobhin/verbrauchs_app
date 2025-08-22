@@ -41,8 +41,6 @@ android {
     buildTypes {
         release {
             signingConfig = signingConfigs.getByName("debug")
-            
-            // HINZUGEFÜGT: Diese Zeile weist den Build an, unsere Proguard-Regeln zu verwenden.
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
     }
@@ -54,5 +52,6 @@ flutter {
 
 dependencies {
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.0.4")
-    implementation("com.google.mlkit:text-recognition:16.0.0")
+    // ENTFERNT: Diese Zeile war der Verursacher des Konflikts.
+    // implementation("com.google.mlkit:text-recognition:16.0.0")
 }
