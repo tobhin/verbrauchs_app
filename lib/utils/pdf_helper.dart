@@ -1,6 +1,6 @@
 // Datei: lib/utils/pdf_helper.dart
 
-import 'dart.io';
+import 'dart:io';
 // import 'package:flutter/services.dart'; // War unbenutzt
 import 'package:intl/intl.dart';
 import 'package:path_provider/path_provider.dart';
