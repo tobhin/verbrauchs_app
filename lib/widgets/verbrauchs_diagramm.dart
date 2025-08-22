@@ -1,3 +1,5 @@
+// Datei: lib/widgets/verbrauchs_diagramm.dart
+
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
@@ -24,7 +26,8 @@ class VerbrauchsDiagramm extends StatelessWidget {
         child: Card(
           elevation: 2,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          color: theme.colorScheme.surfaceContainerHighest.withOpacity(0.5),
+          // KORRIGIERT: .withOpacity(0.5) ersetzt durch .withAlpha(128)
+          color: theme.colorScheme.surfaceContainerHighest.withAlpha(128),
           child: Center(
             child: Text(
               'Nicht genügend Daten für ein Diagramm vorhanden.',
@@ -54,7 +57,8 @@ class VerbrauchsDiagramm extends StatelessWidget {
       child: Card(
         elevation: 2,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        color: theme.colorScheme.surfaceContainerHighest.withOpacity(0.5),
+        // KORRIGIERT: .withOpacity(0.5) ersetzt durch .withAlpha(128)
+        color: theme.colorScheme.surfaceContainerHighest.withAlpha(128),
         child: Padding(
           padding: const EdgeInsets.all(16.0),
           child: BarChart(
@@ -94,7 +98,8 @@ class VerbrauchsDiagramm extends StatelessWidget {
                 drawVerticalLine: false,
                 getDrawingHorizontalLine: (value) {
                   return FlLine(
-                    color: theme.colorScheme.onSurface.withOpacity(0.1),
+                    // KORRIGIERT: .withOpacity(0.1) ersetzt durch .withAlpha(26)
+                    color: theme.colorScheme.onSurface.withAlpha(26),
                     strokeWidth: 1,
                   );
                 },
@@ -102,20 +107,19 @@ class VerbrauchsDiagramm extends StatelessWidget {
               borderData: FlBorderData(show: false),
               barTouchData: BarTouchData(
                 touchTooltipData: BarTouchTooltipData(
-                  // --- KORREKTUR: Die problematische Zeile wurde entfernt, da sie in v0.68.0 nicht existiert ---
                   getTooltipItem: (group, groupIndex, rod, rodIndex) {
                     final monthName = DateFormat.MMMM('de_DE').format(DateTime(0, group.x.toInt()));
                     return BarTooltipItem(
                       '$monthName\n',
                       theme.textTheme.bodyLarge!.copyWith(
-                        color: Colors.white, // Standard-Textfarbe für dunklen Tooltip
+                        color: Colors.white,
                         fontWeight: FontWeight.bold,
                       ),
                       children: <TextSpan>[
                         TextSpan(
                           text: '${rod.toY.toStringAsFixed(1)} $einheit',
                           style: theme.textTheme.bodyMedium!.copyWith(
-                            color: Colors.white, // Standard-Textfarbe für dunklen Tooltip
+                            color: Colors.white,
                           ),
                         ),
                       ],

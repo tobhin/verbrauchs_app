@@ -1,14 +1,14 @@
 // Datei: lib/utils/pdf_helper.dart
 
-import 'dart:io';
-import 'package:flutter/services.dart';
+import 'dart.io';
+// import 'package:flutter/services.dart'; // War unbenutzt
 import 'package:intl/intl.dart';
 import 'package:path_provider/path_provider.dart';
-import 'package:pdf/pdf.dart';
+// import 'package:pdf/pdf.dart'; // War unbenutzt
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 import 'package:share_plus/share_plus.dart';
-import '../models/meter.dart';
+// import '../models/meter.dart'; // War unbenutzt
 import '../services/database_service.dart';
 
 Future<void> exportToPdf() async {
@@ -26,10 +26,8 @@ Future<void> exportToPdf() async {
     final isDualTariff = meterType?.name == 'Strom';
 
     List<List<String>> tableData = [];
-    // Header
     tableData.add(isDualTariff ? ['Datum', 'HT', 'NT'] : ['Datum', 'Zählerstand']);
 
-    // Data Rows
     for (final reading in readings) {
       tableData.add(isDualTariff
           ? [
@@ -54,7 +52,8 @@ Future<void> exportToPdf() async {
                 style: pw.TextStyle(font: boldFont, fontSize: 18),
               ),
               pw.SizedBox(height: 16),
-              pw.Table.fromTextArray(
+              // KORRIGIERT: Veraltete Methode ersetzt
+              pw.TableHelper.fromTextArray(
                 headerStyle: pw.TextStyle(font: boldFont),
                 cellStyle: pw.TextStyle(font: font),
                 data: tableData,
@@ -66,7 +65,6 @@ Future<void> exportToPdf() async {
     );
   }
 
-  // Save and Share
   final output = await getTemporaryDirectory();
   final file = File("${output.path}/export_${DateTime.now().millisecondsSinceEpoch}.pdf");
   await file.writeAsBytes(await pdf.save());
