@@ -25,9 +25,11 @@ class MenuScreen extends StatefulWidget {
 
 class _MenuScreenState extends State<MenuScreen> {
   List<Meter> _meters = [];
+  List<MeterType> _availableMeterTypes = [];
   Map<int, Tariff> _tariffs = {};
   Map<int, List<Reminder>> _reminders = {};
   Map<int, int> _readingCounts = {};
+  Map<int, MeterType> _meterTypes = {};
   int _openPanelIndex = -1;
 
   @override
@@ -38,9 +40,11 @@ class _MenuScreenState extends State<MenuScreen> {
 
   Future<void> _loadData() async {
     final ms = await AppDb.instance.fetchMeters();
+    final allTypes = await AppDb.instance.fetchMeterTypes();
     final Map<int, Tariff> ts = {};
     final Map<int, List<Reminder>> rems = {};
     final Map<int, int> counts = {};
+    final Map<int, MeterType> typeMap = {for (var type in allTypes) type.id!: type};
 
     for (var meter in ms) {
       final tariff = await AppDb.instance.getTariff(meter.id!);
@@ -49,7 +53,6 @@ class _MenuScreenState extends State<MenuScreen> {
       }
       final meterReminders = await AppDb.instance.fetchReminders(meter.id!);
       rems[meter.id!] = meterReminders;
-
       final readings = await AppDb.instance.fetchReadingsForMeter(meter.id!);
       counts[meter.id!] = readings.length;
     }
@@ -57,41 +60,47 @@ class _MenuScreenState extends State<MenuScreen> {
     if (mounted) {
       setState(() {
         _meters = ms;
+        _availableMeterTypes = allTypes.where((t) => t.isDefault).toList();
         _tariffs = ts;
         _reminders = rems;
         _readingCounts = counts;
+        _meterTypes = typeMap;
       });
     }
   }
 
   Future<void> _addMeter() async {
+    if (_availableMeterTypes.isEmpty) return;
+
     final nameCtrl = TextEditingController();
     final nrCtrl = TextEditingController();
-    MeterType type = MeterType.wasser;
+    int? selectedTypeId = _availableMeterTypes.first.id;
+
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Zähler hinzufügen'),
         content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(controller: nameCtrl, decoration: const InputDecoration(labelText: 'Name')),
-              const SizedBox(height: 16),
-              DropdownButtonFormField<MeterType>(
-                value: type,
-                items: const [
-                  DropdownMenuItem(value: MeterType.stromDual, child: Text('Strom (HT/NT)')),
-                  DropdownMenuItem(value: MeterType.wasser, child: Text('Wasser')),
-                  DropdownMenuItem(value: MeterType.schmutzwasser, child: Text('Schmutzwasser')),
-                  DropdownMenuItem(value: MeterType.gas, child: Text('Gas')),
+          child: StatefulBuilder(
+            builder: (context, setDialogState) {
+              return Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextField(controller: nameCtrl, decoration: const InputDecoration(labelText: 'Name')),
+                  const SizedBox(height: 16),
+                  DropdownButtonFormField<int>(
+                    value: selectedTypeId,
+                    items: _availableMeterTypes
+                        .map((type) => DropdownMenuItem(value: type.id, child: Text(type.name)))
+                        .toList(),
+                    onChanged: (v) => setDialogState(() => selectedTypeId = v),
+                    decoration: const InputDecoration(labelText: 'Typ', border: OutlineInputBorder()),
+                  ),
+                  const SizedBox(height: 16),
+                  TextField(controller: nrCtrl, decoration: const InputDecoration(labelText: 'Zählernummer')),
                 ],
-                onChanged: (v) => type = v ?? MeterType.wasser,
-                decoration: const InputDecoration(labelText: 'Typ', border: OutlineInputBorder()),
-              ),
-              const SizedBox(height: 16),
-              TextField(controller: nrCtrl, decoration: const InputDecoration(labelText: 'Zählernummer')),
-            ],
+              );
+            },
           ),
         ),
         actions: [
@@ -100,8 +109,13 @@ class _MenuScreenState extends State<MenuScreen> {
         ],
       ),
     );
-    if (ok == true) {
-      await AppDb.instance.insertMeter(Meter(name: nameCtrl.text.trim(), type: type, number: nrCtrl.text.trim()));
+
+    if (ok == true && selectedTypeId != null) {
+      await AppDb.instance.insertMeter(Meter(
+        name: nameCtrl.text.trim(),
+        meterTypeId: selectedTypeId!,
+        number: nrCtrl.text.trim(),
+      ));
       await _loadData();
     }
   }
@@ -233,7 +247,9 @@ class _MenuScreenState extends State<MenuScreen> {
     final tariff = await AppDb.instance.getTariff(meter.id!);
     final costCtrl = TextEditingController(text: tariff?.costPerUnit.toString() ?? '');
     final baseFeeCtrl = TextEditingController(text: tariff?.baseFee.toString() ?? '');
-    final unit = meter.type == MeterType.stromDual ? 'kWh' : 'm³';
+    
+    final meterType = _meterTypes[meter.meterTypeId];
+    final unit = meterType?.name == 'Strom' ? 'kWh' : 'm³';
 
     await _showStableInputDialog(
       context: context,
@@ -304,7 +320,9 @@ class _MenuScreenState extends State<MenuScreen> {
 
       if (choice == 'delete') {
         await AppDb.instance.deleteReadingsForMeter(meter.id!);
-        if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Startwert und alle Einträge gelöscht.')));
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Startwert und alle Einträge gelöscht.')));
+        }
         await _loadData();
         return;
       } else if (choice != 'change') {
@@ -318,6 +336,8 @@ class _MenuScreenState extends State<MenuScreen> {
     final valueCtrl = TextEditingController();
     final dateCtrl = TextEditingController(text: DateFormat('dd.MM.yyyy').format(DateTime.now()));
     DateTime selectedDate = DateTime.now();
+    
+    final meterType = _meterTypes[meter.meterTypeId];
 
     await _showStableInputDialog(
       context: context,
@@ -350,7 +370,9 @@ class _MenuScreenState extends State<MenuScreen> {
           onPressed: () async {
             final value = double.tryParse(valueCtrl.text.replaceAll(',', '.'));
             if (value == null) {
-              if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Ungültiger Wert.')));
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Ungültiger Wert.')));
+              }
               return;
             }
             Navigator.pop(context);
@@ -358,11 +380,13 @@ class _MenuScreenState extends State<MenuScreen> {
             await AppDb.instance.insertReading(Reading(
               meterId: meter.id!,
               date: selectedDate,
-              value: meter.type != MeterType.stromDual ? value : null,
-              ht: meter.type == MeterType.stromDual ? value : null,
-              nt: meter.type == MeterType.stromDual ? 0.0 : null,
+              value: meterType?.name != 'Strom' ? value : null,
+              ht: meterType?.name == 'Strom' ? value : null,
+              nt: meterType?.name == 'Strom' ? 0.0 : null,
             ));
-            if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Startwert wurde gespeichert.')));
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Startwert wurde gespeichert.')));
+            }
             await _loadData();
           },
           child: const Text('Speichern'),
@@ -502,7 +526,9 @@ class _MenuScreenState extends State<MenuScreen> {
       final dbFile = File(dbPath);
 
       if (!await dbFile.exists()) {
-        messenger.showSnackBar(const SnackBar(content: Text('Fehler: Datenbankdatei nicht gefunden.')));
+        if (mounted) {
+          messenger.showSnackBar(const SnackBar(content: Text('Fehler: Datenbankdatei nicht gefunden.')));
+        }
         return;
       }
 
@@ -515,12 +541,16 @@ class _MenuScreenState extends State<MenuScreen> {
       final backupPath = p.join(targetDir, 'verbrauchswerte_backup_$timestamp.db');
 
       await dbFile.copy(backupPath);
-
-      messenger.showSnackBar(
-        SnackBar(content: Text('Backup erfolgreich in $targetDir erstellt.')),
-      );
+      
+      if (mounted) {
+        messenger.showSnackBar(
+          SnackBar(content: Text('Backup erfolgreich in $targetDir erstellt.')),
+        );
+      }
     } catch (e) {
-      messenger.showSnackBar(SnackBar(content: Text('Backup fehlgeschlagen: $e')));
+      if (mounted) {
+        messenger.showSnackBar(SnackBar(content: Text('Backup fehlgeschlagen: $e')));
+      }
     }
   }
 
@@ -550,15 +580,19 @@ class _MenuScreenState extends State<MenuScreen> {
 
       final dbPath = await AppDb.instance.getDatabasePath();
       await backupFile.copy(dbPath);
-
-      messenger.showSnackBar(
-        const SnackBar(
-          duration: Duration(seconds: 5),
-          content: Text('Backup erfolgreich wiederhergestellt. Bitte starte die App jetzt neu.'),
-        ),
-      );
+      
+      if (mounted) {
+        messenger.showSnackBar(
+          const SnackBar(
+            duration: Duration(seconds: 5),
+            content: Text('Backup erfolgreich wiederhergestellt. Bitte starte die App jetzt neu.'),
+          ),
+        );
+      }
     } catch (e) {
-      messenger.showSnackBar(SnackBar(content: Text('Wiederherstellung fehlgeschlagen: $e')));
+      if (mounted) {
+        messenger.showSnackBar(SnackBar(content: Text('Wiederherstellung fehlgeschlagen: $e')));
+      }
     }
   }
 
