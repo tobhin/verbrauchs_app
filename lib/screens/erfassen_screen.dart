@@ -1,5 +1,3 @@
-// Datei: lib/screens/erfassen_screen.dart
-
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
@@ -129,10 +127,10 @@ class _ErfassenScreenState extends State<ErfassenScreen> {
     if (x == null) return;
     final dir = await getApplicationDocumentsDirectory();
     final ext = x.path.split('.').last;
-    final save = '${dir.path}/img_${DateTime.now().millisecondsSinceEpoch}.$ext';
-    await File(x.path).copy(save);
+    final savePath = '${dir.path}/img_${DateTime.now().millisecondsSinceEpoch}.$ext';
+    await File(x.path).copy(savePath);
     setState(() {
-      _imagePath = save;
+      _imagePath = savePath;
       _isScanning = true;
     });
     try {
@@ -146,7 +144,7 @@ class _ErfassenScreenState extends State<ErfassenScreen> {
         default: meterTypeLabel = MeterTypeForOcr.wasser;
       }
       final best = await tryOcrSmart(
-        imagePath: save,
+        imagePath: savePath,
         meterType: meterTypeLabel,
         meterSerial: _selected?.number,
         lastValue: _lastReading?.value,
@@ -263,8 +261,7 @@ class _ErfassenScreenState extends State<ErfassenScreen> {
           const SizedBox(height: 16),
           if (_allMeters.isEmpty)
             const Center(child: Text('Bitte im Menü zuerst einen Zähler anlegen.'))
-          else
-            ...[
+          else ...[
             DropdownButtonFormField<Meter>(
               key: ValueKey(_selected),
               isExpanded: true,
@@ -330,6 +327,7 @@ class _ErfassenScreenState extends State<ErfassenScreen> {
                     ),
                   ],
                   const SizedBox(height: 12),
+                  // KORRIGIERTER if/else Block
                   if (_isScanning)
                     const Row(
                       children: [
@@ -339,3 +337,47 @@ class _ErfassenScreenState extends State<ErfassenScreen> {
                       ],
                     )
                   else
+                    Row(
+                      children: [
+                        ElevatedButton.icon(onPressed: _pickImage, icon: const Icon(Icons.add_a_photo), label: const Text('Foto')),
+                        const SizedBox(width: 8),
+                        const Expanded(child: Text('Wert per Kamera erkennen')),
+                      ],
+                    ),
+                  if (_imagePath != null) ...[
+                    const SizedBox(height: 8),
+                    Stack(
+                      alignment: Alignment.topRight,
+                      children: [
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(8),
+                          child: Image.file(File(_imagePath!), height: 140, width: double.infinity, fit: BoxFit.cover),
+                        ),
+                        IconButton(
+                          onPressed: _clearImage,
+                          icon: const CircleAvatar(
+                            backgroundColor: Colors.black54,
+                            child: Icon(Icons.close, color: Colors.white),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                  const SizedBox(height: 24),
+                  FilledButton.icon(
+                    style: FilledButton.styleFrom(
+                      minimumSize: const Size(double.infinity, 50),
+                    ),
+                    onPressed: _isSaving ? null : _save,
+                    icon: _isSaving ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)) : const Icon(Icons.save),
+                    label: const Text('Speichern'),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}

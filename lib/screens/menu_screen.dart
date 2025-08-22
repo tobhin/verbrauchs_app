@@ -2,9 +2,8 @@
 
 import 'package:flutter/material.dart';
 import '../services/database_service.dart';
-// KORRIGIERT: Pfade zu package-absoluten Pfaden geändert für mehr Stabilität
-import 'package:verbrauchs_app/utils/excel_helper.dart'; 
-import 'package:verbrauchs_app/utils/pdf_helper.dart';
+import '../utils/excel_helper.dart'; // KORRIGIERT
+import '../utils/pdf_helper.dart';   // KORRIGIERT
 
 class MenuScreen extends StatefulWidget {
   final void Function(ThemeMode) onChangeTheme;
@@ -21,12 +20,12 @@ class MenuScreen extends StatefulWidget {
 }
 
 class _MenuScreenState extends State<MenuScreen> {
-  // ENTFERNT: Die ungenutzte _iconMap wurde gelöscht.
 
   @override
   Widget build(BuildContext context) {
     return ListView(
       children: [
+        // JETZT WIEDER AKTIVIERT
         ListTile(
           leading: const Icon(Icons.import_export),
           title: const Text('Daten exportieren'),
@@ -69,6 +68,7 @@ class _MenuScreenState extends State<MenuScreen> {
     );
   }
 
+  // JETZT WIEDER AKTIVIERT
   void _showExportDialog(BuildContext context) {
     showDialog(
       context: context,
@@ -95,6 +95,7 @@ class _MenuScreenState extends State<MenuScreen> {
     );
   }
 
+  // JETZT WIEDER AKTIVIERT
   Future<void> _exportAsExcel(BuildContext context) async {
     final messenger = ScaffoldMessenger.of(context);
     try {
@@ -105,6 +106,7 @@ class _MenuScreenState extends State<MenuScreen> {
     }
   }
 
+  // JETZT WIEDER AKTIVIERT
   Future<void> _exportAsPdf(BuildContext context) async {
     final messenger = ScaffoldMessenger.of(context);
     try {
