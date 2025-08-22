@@ -128,8 +128,10 @@ class _MenuScreenState extends State<MenuScreen> {
           FilledButton(
             onPressed: () async {
               await AppDb.instance.deleteDatabaseFile();
+              // ignore: use_build_context_synchronously
               Navigator.pop(ctx);
               if (mounted) {
+                // ignore: use_build_context_synchronously
                 ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Alle Daten wurden gelöscht.')));
               }
             },

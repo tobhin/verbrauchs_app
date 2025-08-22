@@ -29,7 +29,7 @@ class _WerteScreenState extends State<WerteScreen> {
   List<ReadingWithConsumption> _readingsWithConsumption = [];
   List<int> _availableYears = [];
   int? _selectedYear;
-  bool _isChartVisible = false;
+  final bool _isChartVisible = false;
   bool _isLoading = true;
   String _totalCostString = '';
   final ScrollController _scrollController = ScrollController();
@@ -348,6 +348,7 @@ class _WerteScreenState extends State<WerteScreen> {
           pw.Text('Arbeitspreis: ${tariff?.costPerUnit.toStringAsFixed(4) ?? 'N/A'} € / $unit'),
           pw.Text('Grundgebühr: ${tariff?.baseFee.toStringAsFixed(2) ?? 'N/A'} € / Monat'),
           pw.SizedBox(height: 20),
+          // ignore: deprecated_member_use
           pw.Table.fromTextArray(
             headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold),
             headers: dataRows.first.cast<String>(),
@@ -407,6 +408,7 @@ class _WerteScreenState extends State<WerteScreen> {
 
     if (confirmed == true) {
       await AppDb.instance.deleteReading(readingId);
+      // ignore: use_build_context_synchronously
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Eintrag gelöscht')));
       await _reloadReadings();
     }
@@ -449,6 +451,7 @@ class _WerteScreenState extends State<WerteScreen> {
         nt: _parseNum(ntCtrl.text),
       );
       await AppDb.instance.updateReading(updatedReading);
+      // ignore: use_build_context_synchronously
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Eintrag aktualisiert')));
       await _reloadReadings();
     }
