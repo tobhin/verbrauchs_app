@@ -12,7 +12,7 @@ if (localPropertiesFile.exists()) {
     localProperties.load(localPropertiesFile.inputStream())
 }
 
-val flutterVersionCode = localProperties.getProperty("flutter.versionCode")?.toInt() ?: 1
+val flutterVersionCode = localProperties.getProperty("flutter.versionCode") ?: "1"
 val flutterVersionName = localProperties.getProperty("flutter.versionName") ?: "1.0"
 
 android {
@@ -33,7 +33,7 @@ android {
         applicationId = "com.example.verbrauchs_app"
         minSdk = 21
         targetSdk = 34
-        versionCode = flutterVersionCode
+        versionCode = flutterVersionCode.toInteger()
         versionName = flutterVersionName
         multiDexEnabled = true
     }
@@ -52,8 +52,4 @@ flutter {
 
 dependencies {
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.0.4")
-    
-    // HINZUGEFÜGT: Explizite Abhängigkeit vom Latin-Textmodell für ML Kit.
-    // Dies löst die R8-Probleme an der Wurzel.
-    implementation("com.google.mlkit:text-recognition:16.0.0")
 }
