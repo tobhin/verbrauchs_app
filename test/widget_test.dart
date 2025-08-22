@@ -1,9 +1,9 @@
 // Datei: test/widget_test.dart
 
-import 'package:flutter/material.dart';
+// import 'package:flutter/material.dart'; // War unbenutzt
 import 'package:flutter_test/flutter_test.dart';
 import 'package:verbrauchs_app/main.dart';
-import 'package:verbrauchs_app/app.dart'; // Importiert deine app.dart
+import 'package:verbrauchs_app/app.dart';
 
 void main() {
   testWidgets('App smoke test', (WidgetTester tester) async {

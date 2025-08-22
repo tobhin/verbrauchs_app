@@ -5,7 +5,7 @@ import 'package:excel/excel.dart';
 import 'package:intl/intl.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
-import '../models/meter.dart';
+// import '../models/meter.dart'; // War unbenutzt
 import '../services/database_service.dart';
 
 Future<void> exportToExcel() async {
@@ -16,7 +16,6 @@ Future<void> exportToExcel() async {
     final readings = await AppDb.instance.fetchReadingsForMeter(meter.id!);
     if (readings.isEmpty) continue;
 
-    // Sanitize sheet name (max 31 chars, no invalid chars)
     String sheetName = meter.name.replaceAll(RegExp(r'[\*/:?\[\]]'), '').trim();
     if (sheetName.length > 31) {
       sheetName = sheetName.substring(0, 31);
@@ -30,14 +29,14 @@ Future<void> exportToExcel() async {
     // Header
     if (isDualTariff) {
       sheetObject.appendRow([
-        const TextCellValue('Datum'),
-        const TextCellValue('HT'),
-        const TextCellValue('NT')
+        TextCellValue('Datum'), // KORRIGIERT: "const" entfernt
+        TextCellValue('HT'),    // KORRIGIERT: "const" entfernt
+        TextCellValue('NT')     // KORRIGIERT: "const" entfernt
       ]);
     } else {
       sheetObject.appendRow([
-        const TextCellValue('Datum'),
-        const TextCellValue('Zählerstand')
+        TextCellValue('Datum'),       // KORRIGIERT: "const" entfernt
+        TextCellValue('Zählerstand') // KORRIGIERT: "const" entfernt
       ]);
     }
 
