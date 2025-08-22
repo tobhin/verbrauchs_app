@@ -31,9 +31,11 @@ android {
 
     defaultConfig {
         applicationId = "com.example.verbrauchs_app"
+        // KORRIGIERT: Feste Werte statt Flutter-Variablen
         minSdk = 21
         targetSdk = 34
-        versionCode = flutterVersionCode.toInteger()
+        // KORRIGIERT: .toInteger() zu .toInt() geändert
+        versionCode = flutterVersionCode.toInt()
         versionName = flutterVersionName
         multiDexEnabled = true
     }
