@@ -1,22 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:timezone/data/latest.dart' as tz;
-// Die NotificationService Zeile wird hier nicht mehr importiert
-import 'screens/app_screen.dart';
-import 'services/database_service.dart';
+import 'app.dart'; // KORRIGIERT: Importiert jetzt die korrekte app.dart
+// import 'services/database_service.dart'; // Nicht mehr nötig, da wir init() nicht aufrufen
 
 void main() async {
-  // Die meisten Initialisierungen sind sicher und können hier bleiben.
+  // Diese Initialisierungen sind sicher und können hier bleiben.
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Datenbank initialisieren
-  await AppDb.instance.init();
+  // ENTFERNT: Deine Datenbank initialisiert sich selbst, dieser Aufruf war falsch.
+  // await AppDb.instance.init(); 
 
   // Zeitzonen initialisieren
   tz.initializeTimeZones();
-
-  // ENTFERNT: Diese Zeile war der wahrscheinliche Verursacher des Absturzes.
-  // await NotificationService().init();
 
   // App nur im Hochformat erlauben
   await SystemChrome.setPreferredOrientations([
@@ -60,7 +56,7 @@ class _VerbrauchsAppState extends State<VerbrauchsApp> {
             colorSchemeSeed: Colors.blue,
           ),
           themeMode: themeMode,
-          home: AppScreen(
+          home: AppScreen( // KORRIGIERT: Dieser Name passt jetzt zum Widget aus deiner app.dart
             onChangeTheme: _changeTheme,
             themeModeListenable: _themeMode,
           ),
