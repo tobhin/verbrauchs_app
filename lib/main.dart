@@ -1,20 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:timezone/data/latest.dart' as tz;
-import 'app.dart'; // KORRIGIERT: Importiert jetzt die korrekte app.dart
-// import 'services/database_service.dart'; // Nicht mehr nötig, da wir init() nicht aufrufen
+import 'package:intl/date_symbol_data_local.dart'; // HINZUGEFÜGT
+import 'app.dart';
+// import 'services/database_service.dart'; // Nicht mehr benötigt
 
 void main() async {
-  // Diese Initialisierungen sind sicher und können hier bleiben.
   WidgetsFlutterBinding.ensureInitialized();
+  
+  // HINZUGEFÜGT: Initialisiert die Datumsformatierung für die gesamte App
+  await initializeDateFormatting('de_DE', null); 
 
-  // ENTFERNT: Deine Datenbank initialisiert sich selbst, dieser Aufruf war falsch.
-  // await AppDb.instance.init(); 
-
-  // Zeitzonen initialisieren
   tz.initializeTimeZones();
 
-  // App nur im Hochformat erlauben
   await SystemChrome.setPreferredOrientations([
     DeviceOrientation.portraitUp,
     DeviceOrientation.portraitDown,
@@ -23,7 +21,7 @@ void main() async {
   runApp(const VerbrauchsApp());
 }
 
-// Dein ursprünglicher App-Code
+// Dein App-Code
 class VerbrauchsApp extends StatefulWidget {
   const VerbrauchsApp({super.key});
 
@@ -56,7 +54,7 @@ class _VerbrauchsAppState extends State<VerbrauchsApp> {
             colorSchemeSeed: Colors.blue,
           ),
           themeMode: themeMode,
-          home: AppScreen( // KORRIGIERT: Dieser Name passt jetzt zum Widget aus deiner app.dart
+          home: AppScreen(
             onChangeTheme: _changeTheme,
             themeModeListenable: _themeMode,
           ),
