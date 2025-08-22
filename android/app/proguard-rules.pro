@@ -1,8 +1,4 @@
 # Flutter's default ProGuard rules.
-# You can customize this file to optimize your application's size.
-# For more information, see https://flutter.dev/docs/deployment/android#reviewing-the-proguard-rules
-
-# The following rules are used by default Flutter apps.
 -dontwarn io.flutter.embedding.**
 -keep class io.flutter.app.** { *; }
 -keep class io.flutter.plugin.** { *; }
@@ -12,3 +8,11 @@
 -keepclassmembers class fia {
     *** any;
 }
+
+# HINZUGEFÜGT: R8 anweisen, Warnungen über fehlende, optionale
+# ML Kit Sprachpakete zu ignorieren, da wir sie nicht verwenden.
+# Dies behebt den "Missing classes" Fehler an der Wurzel.
+-dontwarn com.google.mlkit.vision.text.chinese.**
+-dontwarn com.google.mlkit.vision.text.devanagari.**
+-dontwarn com.google.mlkit.vision.text.japanese.**
+-dontwarn com.google.mlkit.vision.text.korean.**
