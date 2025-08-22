@@ -1,3 +1,5 @@
+// Datei: lib/screens/erfassen_screen.dart
+
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
@@ -8,6 +10,7 @@ import '../models/meter_type.dart';
 import '../models/reading.dart';
 import '../services/database_service.dart';
 import '../services/ocr_service.dart';
+import '../utils/icon_mapper.dart'; // HINZUGEFÜGT: Import für unseren neuen Helfer
 
 class ErfassenScreen extends StatefulWidget {
   const ErfassenScreen({super.key});
@@ -29,15 +32,8 @@ class _ErfassenScreenState extends State<ErfassenScreen> {
   String? _imagePath;
   bool _isSaving = false;
   Reading? _lastReading;
-  
-  // HINZUGEFÜGT: Statusvariable für den OCR-Scanvorgang
-  bool _isScanning = false;
 
-  final Map<String, IconData> _iconMap = {
-    'water_drop': Icons.water_drop, 'bolt': Icons.bolt, 'local_fire_department': Icons.local_fire_department,
-    'thermostat': Icons.thermostat, 'solar_power': Icons.solar_power, 'waves': Icons.waves,
-    'heat_pump': Icons.heat_pump, 'add': Icons.add, 'question_mark': Icons.question_mark,
-  };
+  // ENTFERNT: Die lokale _iconMap wurde gelöscht.
 
   @override
   void initState() {
@@ -102,133 +98,13 @@ class _ErfassenScreenState extends State<ErfassenScreen> {
   }
 
   Future<void> _pickImage() async {
-    if (_isScanning) return; // Verhindert doppeltes Ausführen
-
-    final messenger = ScaffoldMessenger.of(context);
-    final src = await showModalBottomSheet<ImageSource?>(
-      context: context,
-      builder: (ctx) => SafeArea(
-        child: Column(mainAxisSize: MainAxisSize.min, children: [
-          ListTile(
-            leading: const Icon(Icons.camera_alt),
-            title: const Text('Kamera'),
-            onTap: () => Navigator.pop(ctx, ImageSource.camera),
-          ),
-          ListTile(
-            leading: const Icon(Icons.photo_library),
-            title: const Text('Galerie'),
-            onTap: () => Navigator.pop(ctx, ImageSource.gallery),
-          ),
-        ]),
-      ),
-    );
-    if (src == null) return;
-    if (src == ImageSource.camera) {
-      final ok = await Permission.camera.request();
-      if (!ok.isGranted) {
-        messenger.showSnackBar(const SnackBar(content: Text('Kamera nicht erlaubt.')));
-        return;
-      }
-    }
-    final picker = ImagePicker();
-    final x = await picker.pickImage(source: src, imageQuality: 90, maxWidth: 2048, maxHeight: 2048);
-    if (x == null) return;
-    final dir = await getApplicationDocumentsDirectory();
-    final ext = x.path.split('.').last;
-    final save = '${dir.path}/img_${DateTime.now().millisecondsSinceEpoch}.$ext';
-    await File(x.path).copy(save);
-    
-    setState(() {
-      _imagePath = save;
-      _isScanning = true; // Ladeindikator anzeigen
-    });
-    
-    try {
-      final meterTypeName = _selectedMeterType?.name ?? '';
-      MeterTypeForOcr meterTypeLabel;
-      switch (meterTypeName) {
-        case 'Strom': meterTypeLabel = MeterTypeForOcr.strom; break;
-        case 'Wasser': meterTypeLabel = MeterTypeForOcr.wasser; break;
-        case 'Abwasser': meterTypeLabel = MeterTypeForOcr.schmutzwasser; break;
-        case 'Gas': meterTypeLabel = MeterTypeForOcr.gas; break;
-        default: meterTypeLabel = MeterTypeForOcr.wasser;
-      }
-      
-      final best = await tryOcrSmart(
-        imagePath: save,
-        meterType: meterTypeLabel,
-        meterSerial: _selected?.number,
-        lastValue: _lastReading?.value,
-      );
-      
-      if (best != null) {
-        if (_selectedMeterType?.name == 'Strom') {
-          _htCtrl.text = best.toString();
-        } else {
-          _valueCtrl.text = best.toString();
-        }
-         messenger.showSnackBar(SnackBar(
-          content: Text('OCR: Wert vorgeschlagen ($best)'),
-        ));
-      } else {
-         messenger.showSnackBar(const SnackBar(
-          content: Text('OCR: kein plausibler Wert gefunden'),
-        ));
-      }
-    } catch (e) {
-      messenger.showSnackBar(const SnackBar(content: Text('OCR fehlgeschlagen')));
-    } finally {
-      // WICHTIG: Ladeindikator immer ausblenden
-      if(mounted) {
-        setState(() => _isScanning = false);
-      }
-    }
+    // ... (dein restlicher Code in dieser Methode bleibt unverändert) ...
   }
 
   void _clearImage() => setState(() => _imagePath = null);
 
   Future<void> _save() async {
-    if (_isSaving || _selected == null || !_formKey.currentState!.validate()) return;
-
-    setState(() => _isSaving = true);
-
-    final tariff = await AppDb.instance.getTariff(_selected!.id!);
-    
-    Reading newReading;
-    if (_selectedMeterType?.name == 'Strom') {
-      newReading = Reading(
-        meterId: _selected!.id!,
-        date: DateTime.now(),
-        ht: _parseNum(_htCtrl.text)!,
-        nt: _parseNum(_ntCtrl.text), // NT ist optional
-        imagePath: _imagePath,
-        tariffId: tariff?.id,
-      );
-    } else {
-      newReading = Reading(
-        meterId: _selected!.id!,
-        date: DateTime.now(),
-        value: _parseNum(_valueCtrl.text)!,
-        imagePath: _imagePath,
-        tariffId: tariff?.id,
-      );
-    }
-
-    await AppDb.instance.insertReading(newReading);
-    
-    _htCtrl.clear();
-    _ntCtrl.clear();
-    _valueCtrl.clear();
-    _clearImage();
-    if (context.mounted) FocusScope.of(context).unfocus();
-
-    await _onMeterChanged(_selected);
-    
-    setState(() => _isSaving = false);
-    
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Gespeichert')));
-    }
+    // ... (dein restlicher Code in dieser Methode bleibt unverändert) ...
   }
 
   Widget _buildQuickTiles(BuildContext context) {
@@ -254,7 +130,8 @@ class _ErfassenScreenState extends State<ErfassenScreen> {
             child: Column(
               children: [
                 Icon(
-                  _iconMap[type?.iconName] ?? Icons.question_mark,
+                  // GEÄNDERT: Verwendet jetzt unseren zentralen IconMapper
+                  IconMapper.getIcon(type?.iconName ?? 'question_mark'),
                   size: 28,
                 ),
                 const SizedBox(height: 8),
@@ -284,134 +161,6 @@ class _ErfassenScreenState extends State<ErfassenScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          _buildQuickTiles(context),
-          const SizedBox(height: 16),
-          if (_allMeters.isEmpty)
-            const Center(child: Text('Bitte im Menü zuerst einen Zähler anlegen.'))
-          else ...[
-            DropdownButtonFormField<Meter>(
-              key: ValueKey(_selected),
-              isExpanded: true,
-              value: _selected,
-              items: _allMeters.map((m) => DropdownMenuItem(value: m, child: Text(m.name, overflow: TextOverflow.ellipsis))).toList(),
-              onChanged: _onMeterChanged,
-              decoration: const InputDecoration(labelText: 'Zähler wählen', border: OutlineInputBorder()),
-            ),
-            const SizedBox(height: 16),
-            Form(
-              key: _formKey,
-              child: Column(
-                children: [
-                  if (_selectedMeterType?.name == 'Strom') ...[
-                    TextFormField(
-                      controller: _htCtrl,
-                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                      decoration: InputDecoration(
-                        labelText: 'HT-Wert (${_selected?.number ?? ""})',
-                        hintText: _lastReading?.ht != null ? 'Letzter Wert: ${_lastReading!.ht}' : 'Neuen Wert eingeben',
-                        border: const OutlineInputBorder(),
-                      ),
-                      validator: (v) {
-                        final val = _parseNum(v);
-                        if (val == null) return 'Bitte eine Zahl eingeben';
-                        if (_lastReading?.ht != null && val < _lastReading!.ht!) return 'Wert darf nicht niedriger sein als der letzte!';
-                        return null;
-                      },
-                    ),
-                    const SizedBox(height: 12),
-                    TextFormField(
-                      controller: _ntCtrl,
-                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                      decoration: InputDecoration(
-                        labelText: 'NT-Wert (${_selected?.number ?? ""})',
-                        hintText: _lastReading?.nt != null ? 'Letzter Wert: ${_lastReading!.nt}' : 'Neuen Wert eingeben',
-                        border: const OutlineInputBorder(),
-                      ),
-                      validator: (v) {
-                        // NT ist optional, Validierung nur wenn nicht leer
-                        if (v != null && v.isNotEmpty) {
-                          final val = _parseNum(v);
-                          if (val == null) return 'Bitte eine gültige Zahl eingeben';
-                           if (_lastReading?.nt != null && val < _lastReading!.nt!) return 'Wert darf nicht niedriger sein als der letzte!';
-                        }
-                        return null;
-                      },
-                    ),
-                  ] else ...[
-                    TextFormField(
-                      controller: _valueCtrl,
-                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                      decoration: InputDecoration(
-                        labelText: 'Wert (${_selected?.number ?? ""})',
-                        hintText: _lastReading?.value != null ? 'Letzter Wert: ${_lastReading!.value}' : 'Neuen Wert eingeben',
-                        border: const OutlineInputBorder(),
-                      ),
-                      validator: (v) {
-                        final val = _parseNum(v);
-                        if (val == null) return 'Bitte eine Zahl eingeben';
-                        if (_lastReading?.value != null && val < _lastReading!.value!) return 'Wert darf nicht niedriger sein als der letzte!';
-                        return null;
-                      },
-                    ),
-                  ],
-                  const SizedBox(height: 12),
-                  // HINZUGEFÜGT: Zeigt entweder den Button oder einen Ladeindikator an
-                  _isScanning 
-                    ? const Row(
-                        children: [
-                          SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 3)),
-                          SizedBox(width: 16),
-                          Expanded(child: Text('Foto wird analysiert...')),
-                        ],
-                      )
-                    : Row(
-                      children: [
-                        ElevatedButton.icon(onPressed: _pickImage, icon: const Icon(Icons.add_a_photo), label: const Text('Foto')),
-                        const SizedBox(width: 8),
-                        const Expanded(child: Text('Wert per Kamera erkennen')),
-                      ],
-                    ),
-                  if (_imagePath != null) ...[
-                    const SizedBox(height: 8),
-                    Stack(
-                      alignment: Alignment.topRight,
-                      children: [
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(8),
-                          child: Image.file(File(_imagePath!), height: 140, width: double.infinity, fit: BoxFit.cover),
-                        ),
-                        IconButton(
-                          onPressed: _clearImage,
-                          icon: const CircleAvatar(
-                            backgroundColor: Colors.black54,
-                            child: Icon(Icons.close, color: Colors.white),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                  const SizedBox(height: 24),
-                  FilledButton.icon(
-                    style: FilledButton.styleFrom(
-                      minimumSize: const Size(double.infinity, 50),
-                    ),
-                    onPressed: _isSaving ? null : _save,
-                    icon: _isSaving
-                        ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white,))
-                        : const Icon(Icons.save),
-                    label: const Text('Speichern'),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ],
-      ),
-    );
+    // ... (dein restlicher build-Code bleibt unverändert) ...
   }
 }

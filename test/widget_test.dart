@@ -1,30 +1,18 @@
-// This is a basic Flutter widget test.
-//
-// To perform an interaction with a widget in your test, use the WidgetTester
-// utility in the flutter_test package. For example, you can send tap and scroll
-// gestures. You can also use WidgetTester to find child widgets in the widget
-// tree, read text, and verify that the values of widget properties are correct.
-
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-
-import 'package:verbrauchs_app/main.dart';
+import 'package:verbrauchs_app/main.dart'; // Importiert deine main.dart
 
 void main() {
-  testWidgets('Counter increments smoke test', (WidgetTester tester) async {
-    // Build our app and trigger a frame.
-    await tester.pumpWidget(const VerbrauchswerteApp());
+  testWidgets('App smoke test', (WidgetTester tester) async {
+    // Baue die App und löse einen Frame aus.
+    await tester.pumpWidget(const VerbrauchsApp());
 
-    // Verify that our counter starts at 0.
-    expect(find.text('0'), findsOneWidget);
-    expect(find.text('1'), findsNothing);
+    // Überprüfe, ob der erste Bildschirm (Erfassen) angezeigt wird.
+    // Wir suchen nach dem Titel im AppBar.
+    expect(find.text('Erfassen'), findsOneWidget);
 
-    // Tap the '+' icon and trigger a frame.
-    await tester.tap(find.byIcon(Icons.add));
-    await tester.pump();
-
-    // Verify that our counter has incremented.
-    expect(find.text('0'), findsNothing);
-    expect(find.text('1'), findsOneWidget);
+    // Wir überprüfen, ob die anderen Titel NICHT sichtbar sind.
+    expect(find.text('Werte'), findsNothing);
+    expect(find.text('Menü'), findsNothing);
   });
 }
