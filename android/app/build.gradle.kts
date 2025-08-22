@@ -52,6 +52,8 @@ flutter {
 
 dependencies {
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.0.4")
-    // ENTFERNT: Diese Zeile war der Verursacher des Konflikts.
-    // implementation("com.google.mlkit:text-recognition:16.0.0")
+    
+    // HINZUGEFÜGT: Explizite Abhängigkeit vom Latin-Textmodell für ML Kit.
+    // Dies löst die R8-Probleme an der Wurzel.
+    implementation("com.google.mlkit:text-recognition:16.0.0")
 }

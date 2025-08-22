@@ -12,8 +12,3 @@
 -keepclassmembers class fia {
     *** any;
 }
-
-# Erweiterte Regeln für Google ML Kit
--keep public class com.google.mlkit.** {*;}
--keep public class com.google.android.gms.internal.mlkit_vision_common.** {*;}
--keep public class com.google.android.gms.internal.mlkit_vision_text_common.** {*;}
