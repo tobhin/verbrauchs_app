@@ -1,4 +1,16 @@
 import java.util.Properties
+import java.io.FileInputStream
+
+// Hilfsfunktion, um die Version aus der pubspec.yaml zu lesen
+fun getPubspecVersion(): Pair<String, String> {
+    val pubspecFile = rootProject.file("../pubspec.yaml")
+    val pubspecText = pubspecFile.readText()
+    val versionLine = pubspecText.lines().first { it.startsWith("version:") }
+    val versionParts = versionLine.split(":").last().trim().split("+")
+    val versionName = versionParts[0]
+    val versionCode = if (versionParts.size > 1) versionParts[1] else "1"
+    return Pair(versionName, versionCode)
+}
 
 plugins {
     id("com.android.application")
@@ -6,14 +18,7 @@ plugins {
     id("dev.flutter.flutter-gradle-plugin")
 }
 
-val localProperties = Properties()
-val localPropertiesFile = rootProject.file("local.properties")
-if (localPropertiesFile.exists()) {
-    localProperties.load(localPropertiesFile.inputStream())
-}
-
-val flutterVersionCode = localProperties.getProperty("flutter.versionCode") ?: "1"
-val flutterVersionName = localProperties.getProperty("flutter.versionName") ?: "1.0"
+val (pubspecVersionName, pubspecVersionCode) = getPubspecVersion()
 
 android {
     namespace = "com.example.verbrauchs_app"
@@ -31,12 +36,11 @@ android {
 
     defaultConfig {
         applicationId = "com.example.verbrauchs_app"
-        // KORRIGIERT: Feste Werte statt Flutter-Variablen
         minSdk = 21
         targetSdk = 34
-        // KORRIGIERT: .toInteger() zu .toInt() geändert
-        versionCode = flutterVersionCode.toInt()
-        versionName = flutterVersionName
+        // KORRIGIERT: Liest jetzt direkt aus der pubspec.yaml
+        versionCode = pubspecVersionCode.toInt()
+        versionName = pubspecVersionName
         multiDexEnabled = true
     }
 
