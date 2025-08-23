@@ -68,47 +68,62 @@ class _MenuScreenState extends State<MenuScreen> {
     }
   }
 
-  Future<void> _addMeter() async {
-    final nameCtrl = TextEditingController();
-    final nrCtrl = TextEditingController();
-    int? typeId = _meterTypes.isNotEmpty ? _meterTypes.first.id : null; // Standard: Erster Type (z. B. ID 1 für Strom)
+Future<void> _addMeter() async {
+  final nameCtrl = TextEditingController();
+  final nrCtrl = TextEditingController();
+  int typeId = _meterTypes.isNotEmpty ? _meterTypes.first.id! : 2; // Standard: Wasser (ID 2) falls leer
 
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Zähler hinzufügen'),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(controller: nameCtrl, decoration: const InputDecoration(labelText: 'Name')),
-              const SizedBox(height: 16),
-              DropdownButtonFormField<int>(
-                value: typeId,
-                items: _meterTypes.map((type) => DropdownMenuItem<int>(
-                  value: type.id,
-                  child: Text(type.name),
-                )).toList(),
-                onChanged: (v) => typeId = v,
-                decoration: const InputDecoration(labelText: 'Typ', border: OutlineInputBorder()),
-              ),
-              const SizedBox(height: 16),
-              TextField(controller: nrCtrl, decoration: const InputDecoration(labelText: 'Zählernummer')),
-            ],
-          ),
+  // Optional: Warnung anzeigen, wenn keine MeterTypes verfügbar sind
+  if (_meterTypes.isEmpty) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Keine Zählertypen verfügbar. Verwende Standardtyp (Wasser).')),
+    );
+  }
+
+  final ok = await showDialog<bool>(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      title: const Text('Zähler hinzufügen'),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(controller: nameCtrl, decoration: const InputDecoration(labelText: 'Name')),
+            const SizedBox(height: 16),
+            DropdownButtonFormField<int>(
+              value: typeId,
+              items: _meterTypes.map((type) => DropdownMenuItem<int>(
+                value: type.id,
+                child: Text(type.name),
+              )).toList(),
+              onChanged: (v) {
+                if (v != null) typeId = v; // Nur nicht-null Werte akzeptieren
+              },
+              decoration: const InputDecoration(labelText: 'Typ', border: OutlineInputBorder()),
+            ),
+            const SizedBox(height: 16),
+            TextField(controller: nrCtrl, decoration: const InputDecoration(labelText: 'Zählernummer')),
+          ],
         ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Abbrechen')),
-          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Hinzufügen')),
-        ],
+      ),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Abbrechen')),
+        FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Hinzufügen')),
+      ],
+    ),
+  );
+
+  if (ok == true) {
+    await AppDb.instance.insertMeter(
+      Meter(
+        name: nameCtrl.text.trim(),
+        meterTypeId: typeId,
+        number: nrCtrl.text.trim(),
       ),
     );
-
-    if (ok == true && typeId != null) {
-      await AppDb.instance.insertMeter(Meter(name: nameCtrl.text.trim(), meterTypeId: typeId, number: nrCtrl.text.trim()));
-      await _loadData();
-    }
+    await _loadData();
   }
+}
 
   Future<T?> _showStableInfoDialog<T>({
     required BuildContext context,
