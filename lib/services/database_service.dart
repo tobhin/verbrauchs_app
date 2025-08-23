@@ -117,7 +117,34 @@ class AppDb {
   }
 
   Future<void> _seedInitialMeters(Database db) async {
-    // Beispielhafte Initialdaten, falls nötig
+    await db.insert('meters', {
+      'name': 'Stromzähler',
+      'meter_type_id': 1,
+      'number': 'STR001',
+      'active': 1,
+      'is_favorite': 1
+    });
+    await db.insert('meters', {
+      'name': 'Wasserzähler',
+      'meter_type_id': 2,
+      'number': 'WAS001',
+      'active': 1,
+      'is_favorite': 1
+    });
+    await db.insert('meters', {
+      'name': 'Schmutzwasserzähler',
+      'meter_type_id': 3,
+      'number': 'SCH001',
+      'active': 1,
+      'is_favorite': 1
+    });
+    await db.insert('meters', {
+      'name': 'Gaszähler',
+      'meter_type_id': 4,
+      'number': 'GAS001',
+      'active': 1,
+      'is_favorite': 1
+    });
   }
 
   Future<String> getDatabasePath() async {

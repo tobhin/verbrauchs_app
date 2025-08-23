@@ -11,20 +11,6 @@ class Tariff {
     this.baseFee = 0.0,
   });
 
-  Tariff copyWith({
-    int? id,
-    int? meterId,
-    double? costPerUnit,
-    double? baseFee,
-  }) {
-    return Tariff(
-      id: id ?? this.id,
-      meterId: meterId ?? this.meterId,
-      costPerUnit: costPerUnit ?? this.costPerUnit,
-      baseFee: baseFee ?? this.baseFee,
-    );
-  }
-
   Map<String, Object?> toMap() => {
         'id': id,
         'meter_id': meterId,

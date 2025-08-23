@@ -1,11 +1,8 @@
 import 'dart:io';
 import 'package:csv/csv.dart';
-import 'package:excel/excel.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:path_provider/path_provider.dart';
-import 'package:pdf/pdf.dart';
-import 'package:pdf/widgets.dart' as pw;
 import 'package:share_plus/share_plus.dart';
 import '../models/meter.dart';
 import '../models/meter_type.dart';
@@ -29,9 +26,7 @@ class _WerteScreenState extends State<WerteScreen> {
   List<ReadingWithConsumption> _readingsWithConsumption = [];
   List<int> _availableYears = [];
   int? _selectedYear;
-  final bool _isChartVisible = false;
   bool _isLoading = true;
-  String _totalCostString = '';
   final ScrollController _scrollController = ScrollController();
 
   @override
@@ -96,7 +91,7 @@ class _WerteScreenState extends State<WerteScreen> {
       for (var i = 0; i < readings.length; i++) {
         final consumption = i < readings.length - 1 ? readings[i].value! - readings[i + 1].value! : null;
         readingsWithConsumption.add(ReadingWithConsumption(
-          reading: readings[i], // Behoben: Benannte Argumente
+          reading: readings[i],
           consumption: consumption,
         ));
       }
@@ -115,7 +110,6 @@ class _WerteScreenState extends State<WerteScreen> {
   }
 
   Future<void> _showManageEntryDialog(ReadingWithConsumption item) async {
-    // Behoben: Implementiere _showManageEntryDialog
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -143,6 +137,34 @@ class _WerteScreenState extends State<WerteScreen> {
     }
   }
 
+  Future<void> _exportReadings() async {
+    try {
+      final readings = _readingsWithConsumption
+          .where((r) => _selectedYear == null || r.reading.date.year == _selectedYear)
+          .toList();
+      final csvData = [
+        ['Datum', 'Zählerstand', 'Verbrauch', 'Einheit'],
+        ...readings.map((r) => [
+              DateFormat('dd.MM.yyyy').format(r.reading.date),
+              r.reading.value?.toStringAsFixed(2) ?? 'HT: ${r.reading.ht} / NT: ${r.reading.nt}',
+              r.consumption?.toStringAsFixed(2) ?? '',
+              _selectedMeterType?.name == 'Strom (HT/NT)' ? 'kWh' : 'm³',
+            ]),
+      ];
+      final csvString = const ListToCsvConverter().convert(csvData);
+      final dir = await getApplicationDocumentsDirectory();
+      final path = '${dir.path}/readings_export_${DateTime.now().millisecondsSinceEpoch}.csv';
+      await File(path).writeAsString(csvString);
+      await Share.shareXFiles([XFile(path)], text: 'Zählerstände Export');
+      await Logger.log('[WerteScreen] Exported readings to $path');
+    } catch (e, st) {
+      await Logger.log('[WerteScreen] ERROR: Failed to export readings: $e\n$st');
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Export fehlgeschlagen')),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_isLoading) return const Center(child: CircularProgressIndicator());
@@ -150,22 +172,50 @@ class _WerteScreenState extends State<WerteScreen> {
     final unit = _selectedMeterType?.name == 'Strom (HT/NT)' ? 'kWh' : 'm³';
 
     return Scaffold(
-      body: Column(
-        children: [
-          DropdownButton<Meter>(
-            value: _selected,
-            items: _meters
-                .map((meter) => DropdownMenuItem(
-                      value: meter,
-                      child: Text(meter.name),
-                    ))
-                .toList(),
-            onChanged: (meter) {
-              setState(() => _selected = meter);
+      appBar: AppBar(
+        title: const Text('Werte'),
+        actions: [
+          DropdownButton<int>(
+            value: _selectedYear,
+            items: [
+              const DropdownMenuItem(value: null, child: Text('Alle Jahre')),
+              ..._availableYears.map((year) => DropdownMenuItem(value: year, child: Text('$year'))),
+            ],
+            onChanged: (year) {
+              setState(() => _selectedYear = year);
               _reloadReadings();
             },
           ),
-          VerbrauchsDiagramm(monatsVerbrauch: {}, balkenFarbe: Colors.blue, einheit: unit),
+          IconButton(
+            icon: const Icon(Icons.download),
+            onPressed: _exportReadings,
+          ),
+        ],
+      ),
+      body: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: DropdownButton<Meter>(
+              value: _selected,
+              isExpanded: true,
+              items: _meters
+                  .map((meter) => DropdownMenuItem(
+                        value: meter,
+                        child: Text(meter.name),
+                      ))
+                  .toList(),
+              onChanged: (meter) {
+                setState(() => _selected = meter);
+                _reloadReadings();
+              },
+            ),
+          ),
+          VerbrauchsDiagramm(
+            monatsVerbrauch: {},
+            balkenFarbe: Theme.of(context).colorScheme.primary,
+            einheit: unit,
+          ),
           Expanded(
             child: ListView.builder(
               controller: _scrollController,
@@ -173,22 +223,22 @@ class _WerteScreenState extends State<WerteScreen> {
               itemBuilder: (ctx, i) {
                 final item = _readingsWithConsumption[i];
                 final reading = item.reading;
-                final consumption = item.consumption;
+                if (_selectedYear != null && reading.date.year != _selectedYear) return const SizedBox.shrink();
 
                 String title;
                 if (reading.value != null) {
-                  title = '${reading.value} $unit';
+                  title = '${reading.value!.toStringAsFixed(2)} $unit';
                 } else {
-                  title = 'HT: ${reading.ht} / NT: ${reading.nt} $unit';
+                  title = 'HT: ${reading.ht?.toStringAsFixed(2)} / NT: ${reading.nt?.toStringAsFixed(2)} $unit';
                 }
 
                 String consumptionText = '';
-                if (consumption != null && consumption >= 0) {
-                  consumptionText = '+${consumption.toStringAsFixed(2)} $unit';
+                if (item.consumption != null && item.consumption! >= 0) {
+                  consumptionText = '+${item.consumption!.toStringAsFixed(2)} $unit';
                 }
 
                 return ListTile(
-                  onLongPress: () => _showManageEntryDialog(item), // Behoben: Methode hinzugefügt
+                  onLongPress: () => _showManageEntryDialog(item),
                   leading: const Icon(Icons.receipt_long_outlined),
                   title: Text(title),
                   subtitle: Text(

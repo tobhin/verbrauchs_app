@@ -30,9 +30,9 @@ class _ErfassenScreenState extends State<ErfassenScreen> {
   final _ntCtrl = TextEditingController();
   String? _imagePath;
   bool _isSaving = false;
-  bool _isLoading = true; // Behoben: _isLoading hinzugefügt
   Reading? _lastReading;
   bool _isScanning = false;
+  bool _isLoading = true;
 
   @override
   void initState() {
@@ -183,7 +183,7 @@ class _ErfassenScreenState extends State<ErfassenScreen> {
                         keyboardType: const TextInputType.numberWithOptions(decimal: true),
                       ),
                     if (_selectedMeterType?.name == 'Strom (HT/NT)') ...[
-                      const SizedBox(height: 16), // Behoben: SizedSized -> SizedBox, const entfernt
+                      const SizedBox(height: 16),
                       TextField(
                         controller: _htCtrl,
                         decoration: const InputDecoration(labelText: 'HT (kWh)'),
@@ -196,26 +196,52 @@ class _ErfassenScreenState extends State<ErfassenScreen> {
                         keyboardType: const TextInputType.numberWithOptions(decimal: true),
                       ),
                     ],
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 24),
                     if (_imagePath == null)
-                      ElevatedButton.icon(
-                        onPressed: _pickImage,
-                        icon: const Icon(Icons.add_a_photo),
-                        label: const Text('Foto aufnehmen'),
-                      ),
-                    if (_imagePath != null)
+                      if (_isScanning)
+                        const Row(
+                          children: [
+                            SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 3)),
+                            SizedBox(width: 16),
+                            Expanded(child: Text('Foto wird analysiert...')),
+                          ],
+                        )
+                      else
+                        Row(
+                          children: [
+                            ElevatedButton.icon(
+                              onPressed: _pickImage,
+                              icon: const Icon(Icons.add_a_photo),
+                              label: const Text('Foto'),
+                            ),
+                            const SizedBox(width: 8),
+                            const Expanded(child: Text('Wert per Kamera erkennen')),
+                          ],
+                        ),
+                    if (_imagePath != null) ...[
+                      const SizedBox(height: 8),
                       Stack(
                         alignment: Alignment.topRight,
                         children: [
-                          Image.file(File(_imagePath!)),
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(8),
+                            child: Image.file(File(_imagePath!), height: 140, width: double.infinity, fit: BoxFit.cover),
+                          ),
                           IconButton(
-                            icon: const Icon(Icons.close),
                             onPressed: _clearImage,
+                            icon: const CircleAvatar(
+                              backgroundColor: Colors.black54,
+                              child: Icon(Icons.close, color: Colors.white),
+                            ),
                           ),
                         ],
                       ),
-                    const SizedBox(height: 16),
+                    ],
+                    const SizedBox(height: 24),
                     FilledButton(
+                      style: FilledButton.styleFrom(
+                        minimumSize: const Size(double.infinity, 50),
+                      ),
                       onPressed: _isSaving ? null : _save,
                       child: const Text('Speichern'),
                     ),

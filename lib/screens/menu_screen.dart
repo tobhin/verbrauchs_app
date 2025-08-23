@@ -1,7 +1,6 @@
 import 'dart:io';
 import 'dart:math';
 import 'package:flutter/material.dart';
-import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:intl/intl.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:path/path.dart' as p;
@@ -140,6 +139,8 @@ class _MenuScreenState extends State<MenuScreen> {
           name: nameCtrl.text.trim(),
           meterTypeId: typeId,
           number: nrCtrl.text.trim(),
+          active: 1,
+          isFavorite: true,
         ),
       );
       await _loadData();
@@ -530,10 +531,5 @@ class _MenuScreenState extends State<MenuScreen> {
         child: body,
       ),
     );
-  }
-
-  @override
-  void dispose() {
-    super.dispose();
   }
 }

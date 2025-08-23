@@ -82,7 +82,7 @@ class NotificationService {
           nextYear++;
         }
         final lastDayOfNextMonth = DateTime(nextYear, nextMonth + 1, 0).day;
-        dt = DateTime(nextYear, nextMonth, math.min(dt.day, lastDayOfNextMonth), dt.hour, dt.minute); // Behoben: min -> math.min
+        dt = DateTime(nextYear, nextMonth, math.min(dt.day, lastDayOfNextMonth), dt.hour, dt.minute);
       }
       return dt;
     }
