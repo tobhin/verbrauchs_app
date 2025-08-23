@@ -12,7 +12,7 @@ import '../models/reminder.dart';
 import '../models/tariff.dart';
 import '../services/database_service.dart';
 import '../services/notification_service.dart';
-import '../services/logger_service.dart'; // HINZUGEFÜGT für Logging
+import '../services/logger_service.dart';
 import 'favorites_screen.dart';
 
 class MenuScreen extends StatefulWidget {
@@ -79,7 +79,7 @@ class _MenuScreenState extends State<MenuScreen> {
   Future<void> _addMeter() async {
     final nameCtrl = TextEditingController();
     final nrCtrl = TextEditingController();
-    int typeId = _meterTypes.isNotEmpty ? _meterTypes.first.id! : 2; // Standard: Wasser (ID 2)
+    int typeId = _meterTypes.isNotEmpty ? _meterTypes.first.id! : 2;
 
     if (_meterTypes.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -119,9 +119,15 @@ class _MenuScreenState extends State<MenuScreen> {
             ],
           ),
         ),
-        actions: const [
-          TextButton(child: Text('Abbrechen'), onPressed: () => Navigator.pop(ctx, false)),
-          FilledButton(child: Text('Hinzufügen'), onPressed: () => Navigator.pop(ctx, true)),
+        actions: [
+          TextButton(
+            child: const Text('Abbrechen'),
+            onPressed: () => Navigator.pop(ctx, false),
+          ),
+          FilledButton(
+            child: const Text('Hinzufügen'),
+            onPressed: () => Navigator.pop(ctx, true),
+          ),
         ],
       ),
     );
@@ -146,7 +152,7 @@ class _MenuScreenState extends State<MenuScreen> {
     final dateCtrl = TextEditingController(
       text: DateFormat('dd.MM.yyyy').format(DateTime.now()),
     );
-    final unit = meter.meterTypeId == 1 ? 'kWh' : 'm³'; // ID 1 = Strom
+    final unit = meter.meterTypeId == 1 ? 'kWh' : 'm³';
 
     final ok = await showDialog<bool>(
       context: context,
@@ -159,7 +165,7 @@ class _MenuScreenState extends State<MenuScreen> {
               TextField(
                 controller: valueCtrl,
                 decoration: InputDecoration(labelText: 'Zählerstand ($unit)'),
-                keyboardType: TextInputType.numberWithOptions(decimal: true),
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
               ),
               const SizedBox(height: 16),
               TextField(
@@ -170,9 +176,15 @@ class _MenuScreenState extends State<MenuScreen> {
             ],
           ),
         ),
-        actions: const [
-          TextButton(child: Text('Abbrechen'), onPressed: () => Navigator.pop(ctx, false)),
-          FilledButton(child: Text('Speichern'), onPressed: () => Navigator.pop(ctx, true)),
+        actions: [
+          TextButton(
+            child: const Text('Abbrechen'),
+            onPressed: () => Navigator.pop(ctx, false),
+          ),
+          FilledButton(
+            child: const Text('Speichern'),
+            onPressed: () => Navigator.pop(ctx, true),
+          ),
         ],
       ),
     );
@@ -183,8 +195,8 @@ class _MenuScreenState extends State<MenuScreen> {
       if (value != null) {
         await AppDb.instance.insertReading(Reading(
           meterId: meter.id!,
-          date: date.toIso8601String(),
-          value: meter.meterTypeId != 1 ? value : null,
+          date: date, // Behoben: DateTime
+          value: value,
           ht: meter.meterTypeId == 1 ? value : null,
           nt: meter.meterTypeId == 1 ? 0.0 : null,
         ));
@@ -210,20 +222,26 @@ class _MenuScreenState extends State<MenuScreen> {
               TextField(
                 controller: costCtrl,
                 decoration: const InputDecoration(labelText: 'Kosten pro Einheit (€)'),
-                keyboardType: TextInputType.numberWithOptions(decimal: true),
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
               ),
               const SizedBox(height: 16),
               TextField(
                 controller: feeCtrl,
                 decoration: const InputDecoration(labelText: 'Grundgebühr (€)'),
-                keyboardType: TextInputType.numberWithOptions(decimal: true),
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
               ),
             ],
           ),
         ),
-        actions: const [
-          TextButton(child: Text('Abbrechen'), onPressed: () => Navigator.pop(ctx, false)),
-          FilledButton(child: Text('Speichern'), onPressed: () => Navigator.pop(ctx, true)),
+        actions: [
+          TextButton(
+            child: const Text('Abbrechen'),
+            onPressed: () => Navigator.pop(ctx, false),
+          ),
+          FilledButton(
+            child: const Text('Speichern'),
+            onPressed: () => Navigator.pop(ctx, true),
+          ),
         ],
       ),
     );
@@ -236,9 +254,6 @@ class _MenuScreenState extends State<MenuScreen> {
           meterId: meter.id!,
           costPerUnit: cost,
           baseFee: fee,
-          value: meter.meterTypeId != 1 ? cost : null,
-          ht: meter.meterTypeId == 1 ? cost : null,
-          nt: meter.meterTypeId == 1 ? 0.0 : null,
         ));
         await _loadData();
       }
@@ -281,9 +296,15 @@ class _MenuScreenState extends State<MenuScreen> {
             ],
           ),
         ),
-        actions: const [
-          TextButton(child: Text('Abbrechen'), onPressed: () => Navigator.pop(ctx, false)),
-          FilledButton(child: Text('Speichern'), onPressed: () => Navigator.pop(ctx, true)),
+        actions: [
+          TextButton(
+            child: const Text('Abbrechen'),
+            onPressed: () => Navigator.pop(ctx, false),
+          ),
+          FilledButton(
+            child: const Text('Speichern'),
+            onPressed: () => Navigator.pop(ctx, true),
+          ),
         ],
       ),
     );
@@ -301,7 +322,9 @@ class _MenuScreenState extends State<MenuScreen> {
 
       if (edit != null) {
         await AppDb.instance.updateReminder(reminder);
-        await NotificationService().cancel(notificationId);
+        if (reminder.notificationId != null) {
+          await NotificationService().cancel(reminder.notificationId!);
+        }
       } else {
         await AppDb.instance.insertReminder(reminder);
       }
@@ -321,7 +344,9 @@ class _MenuScreenState extends State<MenuScreen> {
 
   Future<void> _deleteReminder(Reminder reminder) async {
     await AppDb.instance.deleteReminder(reminder.id!);
-    await NotificationService().cancel(reminder.notificationId);
+    if (reminder.notificationId != null) {
+      await NotificationService().cancel(reminder.notificationId!);
+    }
     await _loadData();
   }
 
@@ -419,8 +444,14 @@ class _MenuScreenState extends State<MenuScreen> {
                     trailing: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        IconButton(icon: const Icon(Icons.edit_outlined), onPressed: () => _scheduleNotificationWorkflow(forMeter: meter, edit: reminder)),
-                        IconButton(icon: const Icon(Icons.delete_outline), onPressed: () => _deleteReminder(reminder)),
+                        IconButton(
+                          icon: const Icon(Icons.edit_outlined),
+                          onPressed: () => _scheduleNotificationWorkflow(forMeter: meter, edit: reminder),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.delete_outline),
+                          onPressed: () => _deleteReminder(reminder),
+                        ),
                       ],
                     ),
                   )),
@@ -437,17 +468,17 @@ class _MenuScreenState extends State<MenuScreen> {
               title: 'Datensicherung',
               icon: Icons.backup_outlined,
               body: Column(
-                children: const [
+                children: [
                   ListTile(
-                    leading: Icon(Icons.upload_file_outlined),
-                    title: Text('Backup erstellen'),
-                    subtitle: Text('Sichert die Datenbank in einem Ordner deiner Wahl.'),
+                    leading: const Icon(Icons.upload_file_outlined),
+                    title: const Text('Backup erstellen'),
+                    subtitle: const Text('Sichert die Datenbank in einem Ordner deiner Wahl.'),
                     onTap: _createBackup,
                   ),
                   ListTile(
-                    leading: Icon(Icons.download_for_offline_outlined),
-                    title: Text('Backup wiederherstellen'),
-                    subtitle: Text('Überschreibt die aktuellen Daten mit einem Backup.'),
+                    leading: const Icon(Icons.download_for_offline_outlined),
+                    title: const Text('Backup wiederherstellen'),
+                    subtitle: const Text('Überschreibt die aktuellen Daten mit einem Backup.'),
                     onTap: _restoreBackup,
                   ),
                 ],

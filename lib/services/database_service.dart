@@ -76,7 +76,7 @@ class AppDb {
         base_fee REAL NOT NULL DEFAULT 0.0
       );
     ''');
-    await db.execute('CREATE INDEX idx_readings_meter_id ON readings(meter_id);'); // HINZUGEFÜGT: Index für Performance
+    await db.execute('CREATE INDEX idx_readings_meter_id ON readings(meter_id);');
     await _seedMeterTypes(db);
     await _seedInitialMeters(db);
   }
@@ -103,7 +103,6 @@ class AppDb {
           FOREIGN KEY (meter_type_id) REFERENCES meter_types(id)
         );
       ''');
-      // Weitere Migrationslogik hier, falls abgeschnitten
     }
     if (oldV < 10) {
       await db.execute('CREATE INDEX idx_readings_meter_id ON readings(meter_id);');
@@ -132,9 +131,17 @@ class AppDb {
     _db = null;
   }
 
-  Future<List<Meter>> fetchMeters({bool onlyActive = true}) async {
+  Future<List<Meter>> fetchMeters({bool onlyActive = true, bool onlyFavorites = false}) async {
     final d = await db;
-    final rows = await d.query('meters', where: onlyActive ? 'active = 1' : null);
+    String? where;
+    List<dynamic> whereArgs = [];
+    if (onlyActive) {
+      where = 'active = 1';
+    }
+    if (onlyFavorites) {
+      where = where == null ? 'is_favorite = 1' : '$where AND is_favorite = 1';
+    }
+    final rows = await d.query('meters', where: where, whereArgs: whereArgs);
     return rows.map(Meter.fromMap).toList();
   }
 
@@ -234,5 +241,12 @@ class AppDb {
     final d = await db;
     final rows = await d.query('meter_types');
     return rows.map(MeterType.fromMap).toList();
+  }
+
+  Future<MeterType?> fetchMeterTypeById(int id) async {
+    final d = await db;
+    final rows = await d.query('meter_types', where: 'id = ?', whereArgs: [id], limit: 1);
+    if (rows.isEmpty) return null;
+    return MeterType.fromMap(rows.first);
   }
 }
