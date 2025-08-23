@@ -30,6 +30,7 @@ class _MenuScreenState extends State<MenuScreen> {
   Map<int, List<Reminder>> _reminders = {};
   Map<int, int> _readingCounts = {};
   int _openPanelIndex = -1;
+  List<MeterType> _meterTypes = []; // HINZUGEFÜGT: Liste der MeterTypes aus DB
 
   @override
   void initState() {
@@ -42,6 +43,8 @@ class _MenuScreenState extends State<MenuScreen> {
     final Map<int, Tariff> ts = {};
     final Map<int, List<Reminder>> rems = {};
     final Map<int, int> counts = {};
+
+    _meterTypes = await AppDb.instance.fetchMeterTypes(); // HINZUGEFÜGT: Lade MeterTypes aus DB
 
     for (var meter in ms) {
       final tariff = await AppDb.instance.getTariff(meter.id!);
@@ -68,7 +71,8 @@ class _MenuScreenState extends State<MenuScreen> {
   Future<void> _addMeter() async {
     final nameCtrl = TextEditingController();
     final nrCtrl = TextEditingController();
-    MeterType type = MeterType.wasser;
+    int? typeId = _meterTypes.isNotEmpty ? _meterTypes.first.id : null; // Standard: Erster Type (z. B. ID 1 für Strom)
+
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -79,15 +83,13 @@ class _MenuScreenState extends State<MenuScreen> {
             children: [
               TextField(controller: nameCtrl, decoration: const InputDecoration(labelText: 'Name')),
               const SizedBox(height: 16),
-              DropdownButtonFormField<MeterType>(
-                value: type,
-                items: const [
-                  DropdownMenuItem(value: MeterType.stromDual, child: Text('Strom (HT/NT)')),
-                  DropdownMenuItem(value: MeterType.wasser, child: Text('Wasser')),
-                  DropdownMenuItem(value: MeterType.schmutzwasser, child: Text('Schmutzwasser')),
-                  DropdownMenuItem(value: MeterType.gas, child: Text('Gas')),
-                ],
-                onChanged: (v) => type = v ?? MeterType.wasser,
+              DropdownButtonFormField<int>(
+                value: typeId,
+                items: _meterTypes.map((type) => DropdownMenuItem<int>(
+                  value: type.id,
+                  child: Text(type.name),
+                )).toList(),
+                onChanged: (v) => typeId = v,
                 decoration: const InputDecoration(labelText: 'Typ', border: OutlineInputBorder()),
               ),
               const SizedBox(height: 16),
@@ -101,8 +103,9 @@ class _MenuScreenState extends State<MenuScreen> {
         ],
       ),
     );
-    if (ok == true) {
-      await AppDb.instance.insertMeter(Meter(name: nameCtrl.text.trim(), type: type, number: nrCtrl.text.trim()));
+
+    if (ok == true && typeId != null) {
+      await AppDb.instance.insertMeter(Meter(name: nameCtrl.text.trim(), meterTypeId: typeId, number: nrCtrl.text.trim()));
       await _loadData();
     }
   }
@@ -234,7 +237,7 @@ class _MenuScreenState extends State<MenuScreen> {
     final tariff = await AppDb.instance.getTariff(meter.id!);
     final costCtrl = TextEditingController(text: tariff?.costPerUnit.toString() ?? '');
     final baseFeeCtrl = TextEditingController(text: tariff?.baseFee.toString() ?? '');
-    final unit = meter.type == MeterType.stromDual ? 'kWh' : 'm³';
+    final unit = meter.meterTypeId == 1 ? 'kWh' : 'm³';
 
     await _showStableInputDialog(
       context: context,
@@ -359,9 +362,9 @@ class _MenuScreenState extends State<MenuScreen> {
             await AppDb.instance.insertReading(Reading(
               meterId: meter.id!,
               date: selectedDate,
-              value: meter.type != MeterType.stromDual ? value : null,
-              ht: meter.type == MeterType.stromDual ? value : null,
-              nt: meter.type == MeterType.stromDual ? 0.0 : null,
+              value: meter.meterTypeId != 1 ? value : null,
+              ht: meter.meterTypeId == 1 ? value : null,
+              nt: meter.meterTypeId == 1 ? 0.0 : null,
             ));
             if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Startwert wurde gespeichert.')));
             await _loadData();
