@@ -1,15 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:timezone/data/latest.dart' as tz;
-import 'package:intl/date_symbol_data_local.dart'; // HINZUGEFÜGT
+import 'package:intl/date_symbol_data_local.dart';
 import 'app.dart';
-// import 'services/database_service.dart'; // Nicht mehr benötigt
+import 'services/logger_service.dart'; // HINZUGEFÜGT für Logger
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  
-  // HINZUGEFÜGT: Initialisiert die Datumsformatierung für die gesamte App
-  await initializeDateFormatting('de_DE', null); 
+
+  // Initialisiert die Datumsformatierung für die gesamte App
+  await initializeDateFormatting('de_DE', null);
 
   tz.initializeTimeZones();
 
@@ -18,10 +18,14 @@ void main() async {
     DeviceOrientation.portraitDown,
   ]);
 
+  // HINZUGEFÜGT: Globales Error-Handling
+  FlutterError.onError = (details) {
+    Logger.log('Flutter error: ${details.exceptionAsString()}');
+  };
+
   runApp(const VerbrauchsApp());
 }
 
-// Dein App-Code
 class VerbrauchsApp extends StatefulWidget {
   const VerbrauchsApp({super.key});
 

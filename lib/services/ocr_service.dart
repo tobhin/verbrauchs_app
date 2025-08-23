@@ -1,5 +1,6 @@
 import 'dart:ui';
 import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
+import 'package:verbrauchs_app/services/logger_service.dart'; // HINZUGEFÜGT für Logging
 
 // Helfer-Klasse, die wir intern nutzen
 class _OcrCandidate {
@@ -30,7 +31,7 @@ Future<double?> tryOcrSmart({
     for (final line in block.lines) {
       final text = line.text.trim();
       final textClean = text.replaceAll(RegExp(r'\s'), '').toUpperCase();
-      
+
       if (RegExp(r'[A-Z]').hasMatch(text)) continue;
       if (text.contains('-')) continue;
       if (serialClean != null && textClean.contains(serialClean)) continue;
@@ -43,10 +44,10 @@ Future<double?> tryOcrSmart({
         double score = 0;
         score += (line.boundingBox.height / 10.0).clamp(0, 10);
         if (s.contains('.') || s.contains(',')) score += 0.5;
-        
+
         bool plausible = (v >= 0 && v <= 9999999);
         if (!plausible) score -= 2.0;
-        
+
         if (lastValue != null) {
           if (v < lastValue) score -= 3.0;
           if ((v - lastValue) > 100000) score -= 1.5;
@@ -61,7 +62,11 @@ Future<double?> tryOcrSmart({
       }
     }
   }
+
   candidates.sort((a, b) => b.score.compareTo(a.score));
+  if (candidates.isEmpty) {
+    await Logger.log('[OCR] No valid candidates found for image: $imagePath');
+  }
   return candidates.isNotEmpty ? candidates.first.value : null;
 }
 

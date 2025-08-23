@@ -3,6 +3,7 @@ import 'screens/erfassen_screen.dart';
 import 'screens/werte_screen.dart';
 import 'screens/menu_screen.dart';
 import 'package:verbrauchs_app/services/notification_service.dart';
+import 'package:verbrauchs_app/services/database_service.dart'; // HINZUGEFÜGT für AppDb-Initialisierung
 
 class AppScreen extends StatefulWidget {
   final void Function(ThemeMode) onChangeTheme;
@@ -24,7 +25,6 @@ class _AppScreenState extends State<AppScreen> {
 
   final List<String> _titles = ['Erfassen', 'Werte', 'Menü'];
 
-  // HINZUGEFÜGT: Der NotificationService wird jetzt sicher hier initialisiert.
   @override
   void initState() {
     super.initState();
@@ -34,6 +34,7 @@ class _AppScreenState extends State<AppScreen> {
   Future<void> _initServices() async {
     // Sicherer Ort, um Services zu initialisieren, die eine laufende App-Engine benötigen.
     await NotificationService().init();
+    await AppDb.instance.db; // HINZUGEFÜGT: Initialisiere DB frühzeitig
   }
 
   @override

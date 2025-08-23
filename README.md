@@ -1,16 +1,48 @@
-# verbrauchs_app
+\# Verbrauchs App
 
-A new Flutter project.
+Eine Flutter-App zur Erfassung und Visualisierung von Verbrauchsdaten (z. B. Strom, Wasser) mit Exportfunktionen und Text recognition für Zählerstände.
 
-## Getting Started
 
-This project is a starting point for a Flutter application.
 
-A few resources to get you started if this is your first Flutter project:
+\## Installation
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
+1\. Installiere Flutter: https://flutter.dev/docs/get-started/install
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+2\. `flutter pub get`
+
+3\. `flutter run`
+
+
+
+\## Funktionen
+
+\- Erfassung von Verbrauchsdaten
+
+\- Visualisierung als Balkendiagramm
+
+\- Export in CSV/Excel/PDF
+
+\- Text recognition mit ML Kit
+
+\- Benachrichtigungen für Zählerstände
+
+\- Backup und Wiederherstellung der Datenbank
+
+
+
+\## Abhängigkeiten
+
+\- Flutter SDK: >=3.4.0 <4.0.0
+
+\- Wichtige Packages: `fl\_chart`, `google\_mlkit\_text\_recognition`, `sqflite`, `flutter\_local\_notifications`
+
+
+
+\## Entwicklung
+
+\- \*\*Datenbank\*\*: SQLite mit `sqflite` für lokale Speicherung
+
+\- \*\*OCR\*\*: Google ML Kit für Texterkennung
+
+\- \*\*Diagramme\*\*: `fl\_chart` für Visualisierung
+

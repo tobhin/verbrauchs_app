@@ -28,8 +28,7 @@ class NotificationService {
 
   Future<void> init() async {
     if (_initialized) return;
-    
-    // HINZUGEFÜGT: Proaktive Anfrage der Berechtigungen beim Initialisieren
+
     await requestPermissions();
 
     const androidInit = AndroidInitializationSettings('@mipmap/ic_launcher');
@@ -63,16 +62,16 @@ class NotificationService {
     if (repeat == RepeatPlan.none) {
       return base.isBefore(now) ? now.add(const Duration(days: 365 * 10)) : base;
     }
-    
+
     DateTime dt = base;
-    
+
     if (repeat == RepeatPlan.weekly) {
       while (dt.isBefore(now)) {
         dt = dt.add(const Duration(days: 7));
       }
       return dt;
     }
-    
+
     if (repeat == RepeatPlan.monthly) {
       while (dt.isBefore(now)) {
         var nextMonth = dt.month + 1;
@@ -82,22 +81,11 @@ class NotificationService {
           nextYear++;
         }
         final lastDayOfNextMonth = DateTime(nextYear, nextMonth + 1, 0).day;
-        final day = base.day > lastDayOfNextMonth ? lastDayOfNextMonth : base.day;
-        dt = DateTime(nextYear, nextMonth, day, base.hour, base.minute);
+        dt = DateTime(nextYear, nextMonth, min(dt.day, lastDayOfNextMonth), dt.hour, dt.minute);
       }
       return dt;
     }
 
-    if (repeat == RepeatPlan.yearly) {
-      while (dt.isBefore(now)) {
-        final nextYear = dt.year + 1;
-        final lastDayOfMonth = DateTime(nextYear, base.month + 1, 0).day;
-        final day = base.day > lastDayOfMonth ? lastDayOfMonth : base.day;
-        dt = DateTime(nextYear, base.month, day, base.hour, base.minute);
-      }
-      return dt;
-    }
-    
     return dt;
   }
 
@@ -121,11 +109,11 @@ class NotificationService {
   }) async {
     try {
       await init();
-      
+
       bool permissionsGranted = await areNotificationsEnabled() && await areExactAlarmsLikelyEnabled();
       if (!permissionsGranted) {
-           await Logger.log('[NOTIF][ERR] Permissions not granted for scheduling.');
-           return false;
+        await Logger.log('[NOTIF][ERR] Permissions not granted for scheduling.');
+        return false;
       }
 
       final tzTime = tz.TZDateTime.from(whenLocal, tz.local);
@@ -134,7 +122,7 @@ class NotificationService {
         await Logger.log('[NOTIF][WARN] Attempted to schedule in the past. Skipping. id=$id when=$tzTime');
         return false;
       }
-      
+
       await _plugin.zonedSchedule(
         id,
         title,
@@ -154,13 +142,19 @@ class NotificationService {
     }
   }
 
-  Future<void> cancel(int id) => _plugin.cancel(id);
+  Future<void> cancel(int id) async {
+    if (!_initialized) await init();
+    await _plugin.cancel(id);
+  }
+
   Future<void> cancelAll() async {
+    if (!_initialized) await init();
     await _plugin.cancelAll();
     await Logger.log('[NOTIF] All pending notifications have been cancelled.');
   }
 
   Future<void> checkPendingNotifications() async {
+    if (!_initialized) await init();
     final pendingRequests = await _plugin.pendingNotificationRequests();
     await Logger.log('[DIAGNOSE] Checking for pending notifications...');
     if (pendingRequests.isEmpty) {
