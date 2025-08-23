@@ -8,7 +8,7 @@ import '../models/meter_type.dart';
 import '../models/reading.dart';
 import '../services/database_service.dart';
 import '../services/ocr_service.dart';
-import '../services/logger_service.dart'; // HINZUGEFÜGT für Logging
+import '../services/logger_service.dart';
 import '../utils/icon_mapper.dart';
 
 class ErfassenScreen extends StatefulWidget {
@@ -30,6 +30,7 @@ class _ErfassenScreenState extends State<ErfassenScreen> {
   final _ntCtrl = TextEditingController();
   String? _imagePath;
   bool _isSaving = false;
+  bool _isLoading = true; // Behoben: _isLoading hinzugefügt
   Reading? _lastReading;
   bool _isScanning = false;
 
@@ -42,7 +43,7 @@ class _ErfassenScreenState extends State<ErfassenScreen> {
   Future<void> _loadMeters() async {
     try {
       final allMs = await AppDb.instance.fetchMeters();
-      final favMs = await AppDb.instance.fetchMeters(onlyFavorites: true); // Behoben: Nun unterstützt in database_service.dart
+      final favMs = await AppDb.instance.fetchMeters(onlyFavorites: true);
       final allTypes = await AppDb.instance.fetchMeterTypes();
       final Map<int, MeterType> typeMap = {for (var type in allTypes) type.id!: type};
 
@@ -51,6 +52,7 @@ class _ErfassenScreenState extends State<ErfassenScreen> {
           _allMeters = allMs;
           _favoriteMeters = favMs;
           _meterTypes = typeMap;
+          _isLoading = false;
         });
         if (allMs.isNotEmpty) {
           await _onMeterChanged(allMs.first);
@@ -58,6 +60,7 @@ class _ErfassenScreenState extends State<ErfassenScreen> {
       }
     } catch (e, st) {
       await Logger.log('[ErfassenScreen] ERROR: Failed to load meters: $e\n$st');
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -76,7 +79,7 @@ class _ErfassenScreenState extends State<ErfassenScreen> {
       return;
     }
 
-    final meterType = await AppDb.instance.fetchMeterTypeById(newMeter.meterTypeId); // Behoben: fetchMeterTypeById
+    final meterType = await AppDb.instance.fetchMeterTypeById(newMeter.meterTypeId);
     final readings = await AppDb.instance.fetchReadingsForMeter(newMeter.id!);
     final lastReading = readings.isNotEmpty ? readings.first : null;
 
@@ -143,71 +146,91 @@ class _ErfassenScreenState extends State<ErfassenScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: _isLoading ? const Center(child: CircularProgressIndicator()) : Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              DropdownButtonFormField<Meter>(
-                value: _selected,
-                items: _favoriteMeters.isNotEmpty ? _favoriteMeters.map((meter) => DropdownMenuItem(
-                  value: meter,
-                  child: Text(meter.name),
-                )).toList() : _allMeters.map((meter) => DropdownMenuItem(
-                  value: meter,
-                  child: Text(meter.name),
-                )).toList(),
-                onChanged: _onMeterChanged,
-                decoration: const InputDecoration(labelText: 'Zähler auswählen'),
-              ),
-              const SizedBox(height: 16),
-              if (_selectedMeterType != null) TextField(
-                controller: _valueCtrl,
-                decoration: InputDecoration(labelText: 'Zählerstand (${_selectedMeterType!.name == 'Strom (HT/NT)' ? 'kWh' : 'm³'})'),
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
-              ),
-              // Weitere Felder für HT/NT, falls Strom
-              if (_selectedMeterType?.name == 'Strom (HT/NT)') ...[
-                const SizedSized(height: 16),
-                TextField(
-                  controller: _htCtrl,
-                  decoration: const InputDecoration(labelText: 'HT (kWh)'),
-                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    DropdownButtonFormField<Meter>(
+                      value: _selected,
+                      items: _favoriteMeters.isNotEmpty
+                          ? _favoriteMeters
+                              .map((meter) => DropdownMenuItem(
+                                    value: meter,
+                                    child: Text(meter.name),
+                                  ))
+                              .toList()
+                          : _allMeters
+                              .map((meter) => DropdownMenuItem(
+                                    value: meter,
+                                    child: Text(meter.name),
+                                  ))
+                              .toList(),
+                      onChanged: _onMeterChanged,
+                      decoration: const InputDecoration(labelText: 'Zähler auswählen'),
+                    ),
+                    const SizedBox(height: 16),
+                    if (_selectedMeterType != null)
+                      TextField(
+                        controller: _valueCtrl,
+                        decoration: InputDecoration(
+                            labelText:
+                                'Zählerstand (${_selectedMeterType!.name == 'Strom (HT/NT)' ? 'kWh' : 'm³'})'),
+                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      ),
+                    if (_selectedMeterType?.name == 'Strom (HT/NT)') ...[
+                      const SizedBox(height: 16), // Behoben: SizedSized -> SizedBox, const entfernt
+                      TextField(
+                        controller: _htCtrl,
+                        decoration: const InputDecoration(labelText: 'HT (kWh)'),
+                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      ),
+                      const SizedBox(height: 16),
+                      TextField(
+                        controller: _ntCtrl,
+                        decoration: const InputDecoration(labelText: 'NT (kWh)'),
+                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      ),
+                    ],
+                    const SizedBox(height: 16),
+                    if (_imagePath == null)
+                      ElevatedButton.icon(
+                        onPressed: _pickImage,
+                        icon: const Icon(Icons.add_a_photo),
+                        label: const Text('Foto aufnehmen'),
+                      ),
+                    if (_imagePath != null)
+                      Stack(
+                        alignment: Alignment.topRight,
+                        children: [
+                          Image.file(File(_imagePath!)),
+                          IconButton(
+                            icon: const Icon(Icons.close),
+                            onPressed: _clearImage,
+                          ),
+                        ],
+                      ),
+                    const SizedBox(height: 16),
+                    FilledButton(
+                      onPressed: _isSaving ? null : _save,
+                      child: const Text('Speichern'),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 16),
-                TextField(
-                  controller: _ntCtrl,
-                  decoration: const InputDecoration(labelText: 'NT (kWh)'),
-                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                ),
-              ],
-              const SizedBox(height: 16),
-              if (_imagePath == null) ElevatedButton.icon(
-                onPressed: _pickImage,
-                icon: const Icon(Icons.add_a_photo),
-                label: const Text('Foto aufnehmen'),
               ),
-              if (_imagePath != null) Stack(
-                alignment: Alignment.topRight,
-                children: [
-                  Image.file(File(_imagePath!)),
-                  IconButton(
-                    icon: const Icon(Icons.close),
-                    onPressed: _clearImage,
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              FilledButton(
-                onPressed: _isSaving ? null : _save,
-                child: const Text('Speichern'),
-              ),
-            ],
-          ),
-        ),
-      ),
+            ),
     );
+  }
+
+  @override
+  void dispose() {
+    _valueCtrl.dispose();
+    _htCtrl.dispose();
+    _ntCtrl.dispose();
+    super.dispose();
   }
 }

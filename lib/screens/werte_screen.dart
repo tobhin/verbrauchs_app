@@ -12,7 +12,7 @@ import '../models/meter_type.dart';
 import '../models/reading.dart';
 import '../models/reading_with_consumption.dart';
 import '../services/database_service.dart';
-import '../services/logger_service.dart'; // HINZUGEFÜGT für Logging
+import '../services/logger_service.dart';
 import '../widgets/verbrauchs_diagramm.dart';
 
 class WerteScreen extends StatefulWidget {
@@ -90,12 +90,15 @@ class _WerteScreenState extends State<WerteScreen> {
     }
 
     try {
-      final meterType = await AppDb.instance.fetchMeterTypeById(_selected!.meterTypeId); // Behoben: fetchMeterTypeById
+      final meterType = await AppDb.instance.fetchMeterTypeById(_selected!.meterTypeId);
       final readings = await AppDb.instance.fetchReadingsForMeter(_selected!.id!);
       final readingsWithConsumption = <ReadingWithConsumption>[];
       for (var i = 0; i < readings.length; i++) {
         final consumption = i < readings.length - 1 ? readings[i].value! - readings[i + 1].value! : null;
-        readingsWithConsumption.add(ReadingWithConsumption(readings[i], consumption));
+        readingsWithConsumption.add(ReadingWithConsumption(
+          reading: readings[i], // Behoben: Benannte Argumente
+          consumption: consumption,
+        ));
       }
 
       final years = readings.map((r) => r.date.year).toSet().toList()..sort((a, b) => b.compareTo(a));
@@ -111,7 +114,34 @@ class _WerteScreenState extends State<WerteScreen> {
     }
   }
 
-  // Weitere Methoden für Export, _showManageEntryDialog usw. aus deinem truncated Code
+  Future<void> _showManageEntryDialog(ReadingWithConsumption item) async {
+    // Behoben: Implementiere _showManageEntryDialog
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Eintrag verwalten'),
+        content: const Text('Möchten Sie diesen Eintrag löschen?'),
+        actions: [
+          TextButton(
+            child: const Text('Abbrechen'),
+            onPressed: () => Navigator.pop(ctx, false),
+          ),
+          FilledButton(
+            child: const Text('Löschen'),
+            onPressed: () => Navigator.pop(ctx, true),
+          ),
+        ],
+      ),
+    );
+
+    if (ok == true) {
+      await AppDb.instance.deleteReading(item.reading.id!);
+      await _reloadReadings();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Eintrag gelöscht')),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -124,16 +154,17 @@ class _WerteScreenState extends State<WerteScreen> {
         children: [
           DropdownButton<Meter>(
             value: _selected,
-            items: _meters.map((meter) => DropdownMenuItem(
-              value: meter,
-              child: Text(meter.name),
-            )).toList(),
+            items: _meters
+                .map((meter) => DropdownMenuItem(
+                      value: meter,
+                      child: Text(meter.name),
+                    ))
+                .toList(),
             onChanged: (meter) {
               setState(() => _selected = meter);
               _reloadReadings();
             },
           ),
-          // Chart und Liste aus truncated Code
           VerbrauchsDiagramm(monatsVerbrauch: {}, balkenFarbe: Colors.blue, einheit: unit),
           Expanded(
             child: ListView.builder(
@@ -157,12 +188,12 @@ class _WerteScreenState extends State<WerteScreen> {
                 }
 
                 return ListTile(
-                  onLongPress: () => _showManageEntryDialog(item),
+                  onLongPress: () => _showManageEntryDialog(item), // Behoben: Methode hinzugefügt
                   leading: const Icon(Icons.receipt_long_outlined),
                   title: Text(title),
                   subtitle: Text(
                     '${DateFormat('dd.MM.yyyy', 'de_DE').format(reading.date)}\n'
-                    '${DateFormat('HH:mm', 'de_DE').format(reading.date)} Uhr'
+                    '${DateFormat('HH:mm', 'de_DE').format(reading.date)} Uhr',
                   ),
                   trailing: Text(
                     consumptionText,

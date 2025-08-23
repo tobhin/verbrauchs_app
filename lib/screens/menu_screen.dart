@@ -102,10 +102,12 @@ class _MenuScreenState extends State<MenuScreen> {
               const SizedBox(height: 16),
               DropdownButtonFormField<int>(
                 value: typeId,
-                items: _meterTypes.map((type) => DropdownMenuItem<int>(
-                  value: type.id,
-                  child: Text(type.name),
-                )).toList(),
+                items: _meterTypes
+                    .map((type) => DropdownMenuItem<int>(
+                          value: type.id,
+                          child: Text(type.name),
+                        ))
+                    .toList(),
                 onChanged: (v) {
                   if (v != null) typeId = v;
                 },
@@ -195,7 +197,7 @@ class _MenuScreenState extends State<MenuScreen> {
       if (value != null) {
         await AppDb.instance.insertReading(Reading(
           meterId: meter.id!,
-          date: date, // Behoben: DateTime
+          date: date,
           value: value,
           ht: meter.meterTypeId == 1 ? value : null,
           nt: meter.meterTypeId == 1 ? 0.0 : null,
@@ -407,12 +409,14 @@ class _MenuScreenState extends State<MenuScreen> {
               title: 'Zähler verwalten',
               icon: Icons.tune,
               body: Column(
-                children: _meters.map((meter) => ListTile(
-                  leading: const Icon(Icons.speed),
-                  title: Text(meter.name),
-                  subtitle: Text('Werte: ${_readingCounts[meter.id] ?? 0}'),
-                  onTap: () => _showAddReadingDialog(meter),
-                )).toList(),
+                children: _meters
+                    .map((meter) => ListTile(
+                          leading: const Icon(Icons.speed),
+                          title: Text(meter.name),
+                          subtitle: Text('Werte: ${_readingCounts[meter.id] ?? 0}'),
+                          onTap: () => _showAddReadingDialog(meter),
+                        ))
+                    .toList(),
               ),
             ),
             _buildPanel(
@@ -420,12 +424,14 @@ class _MenuScreenState extends State<MenuScreen> {
               title: 'Tarife',
               icon: Icons.euro,
               body: Column(
-                children: _meters.map((meter) => ListTile(
-                  leading: const Icon(Icons.euro),
-                  title: Text('Tarif für ${meter.name}'),
-                  subtitle: Text(_tariffs[meter.id]?.costPerUnit.toString() ?? 'Kein Tarif'),
-                  onTap: () => _saveTariff(meter),
-                )).toList(),
+                children: _meters
+                    .map((meter) => ListTile(
+                          leading: const Icon(Icons.euro),
+                          title: Text('Tarif für ${meter.name}'),
+                          subtitle: Text(_tariffs[meter.id]?.costPerUnit.toString() ?? 'Kein Tarif'),
+                          onTap: () => _saveTariff(meter),
+                        ))
+                    .toList(),
               ),
             ),
             _buildPanel(
@@ -434,33 +440,34 @@ class _MenuScreenState extends State<MenuScreen> {
               icon: Icons.notifications_outlined,
               body: Column(
                 children: _meters.expand((meter) => [
-                  ListTile(
-                    title: Text(meter.name),
-                    subtitle: Text('Erinnerungen: ${_reminders[meter.id]?.length ?? 0}'),
-                  ),
-                  ...(_reminders[meter.id] ?? []).map((reminder) => ListTile(
-                    title: Text(DateFormat('dd.MM.yyyy').format(DateTime.parse(reminder.baseDate))),
-                    subtitle: Text('Wiederholung: ${reminder.repeat}'),
-                    trailing: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        IconButton(
-                          icon: const Icon(Icons.edit_outlined),
-                          onPressed: () => _scheduleNotificationWorkflow(forMeter: meter, edit: reminder),
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.delete_outline),
-                          onPressed: () => _deleteReminder(reminder),
-                        ),
-                      ],
-                    ),
-                  )),
-                  ListTile(
-                    leading: const Icon(Icons.add_alert_outlined),
-                    title: const Text('Neue Erinnerung planen...'),
-                    onTap: () => _scheduleNotificationWorkflow(forMeter: meter),
-                  ),
-                ]).toList(),
+                      ListTile(
+                        title: Text(meter.name),
+                        subtitle: Text('Erinnerungen: ${_reminders[meter.id]?.length ?? 0}'),
+                      ),
+                      ...(_reminders[meter.id] ?? [])
+                          .map((reminder) => ListTile(
+                                title: Text(DateFormat('dd.MM.yyyy').format(DateTime.parse(reminder.baseDate))),
+                                subtitle: Text('Wiederholung: ${reminder.repeat}'),
+                                trailing: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    IconButton(
+                                      icon: const Icon(Icons.edit_outlined),
+                                      onPressed: () => _scheduleNotificationWorkflow(forMeter: meter, edit: reminder),
+                                    ),
+                                    IconButton(
+                                      icon: const Icon(Icons.delete_outline),
+                                      onPressed: () => _deleteReminder(reminder),
+                                    ),
+                                  ],
+                                ),
+                              )),
+                      ListTile(
+                        leading: const Icon(Icons.add_alert_outlined),
+                        title: const Text('Neue Erinnerung planen...'),
+                        onTap: () => _scheduleNotificationWorkflow(forMeter: meter),
+                      ),
+                    ]).toList(),
               ),
             ),
             _buildPanel(

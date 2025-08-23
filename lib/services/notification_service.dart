@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:math' as math;
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:timezone/timezone.dart' as tz;
@@ -81,7 +82,7 @@ class NotificationService {
           nextYear++;
         }
         final lastDayOfNextMonth = DateTime(nextYear, nextMonth + 1, 0).day;
-        dt = DateTime(nextYear, nextMonth, min(dt.day, lastDayOfNextMonth), dt.hour, dt.minute);
+        dt = DateTime(nextYear, nextMonth, math.min(dt.day, lastDayOfNextMonth), dt.hour, dt.minute); // Behoben: min -> math.min
       }
       return dt;
     }
