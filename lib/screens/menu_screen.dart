@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:path/path.dart' as p;
-import 'package:flutter_local_notifications/flutter_local_notifications.dart'; // Hinzugefügt für DateTimeComponents
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import '../models/meter.dart';
 import '../models/meter_type.dart';
 import '../models/reading.dart';
@@ -338,7 +338,7 @@ class _MenuScreenState extends State<MenuScreen> {
         title: 'Zählerstand erfassen',
         body: 'Erfasse den Zählerstand für ${forMeter.name}',
         whenLocal: date,
-        matchComponents: repeat == RepeatPlan.monthly ? flutter_local_notifications.DateTimeComponents.dayOfMonthAndTime : null, // BEHOBEN: DateTimeComponents referenziert
+        matchComponents: repeat == RepeatPlan.monthly ? DateTimeComponents.dayOfMonthAndTime : null, // BEHOBEN: flutter_local_notifications. entfernt
       );
       await _loadData();
     }
@@ -532,5 +532,10 @@ class _MenuScreenState extends State<MenuScreen> {
         child: body,
       ),
     );
+  }
+
+  @override
+  void dispose() {
+    super.dispose();
   }
 }
