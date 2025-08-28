@@ -79,6 +79,8 @@ class _WerteScreenState extends State<WerteScreen> {
         setState(() {
           _readingsWithConsumption = [];
           _availableYears = [];
+          // Reset selected year when no meter is selected
+          _selectedYear = null;
         });
       }
       return;
@@ -102,6 +104,12 @@ class _WerteScreenState extends State<WerteScreen> {
           _selectedMeterType = meterType;
           _readingsWithConsumption = readingsWithConsumption;
           _availableYears = years;
+          
+          // Validate selected year: ensure it's either null or in the available years
+          if (_selectedYear != null && !years.contains(_selectedYear)) {
+            // Fallback: set to null (show all years) or first available year
+            _selectedYear = years.isNotEmpty ? years.first : null;
+          }
         });
       }
     } catch (e, st) {
