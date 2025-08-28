@@ -27,10 +27,11 @@ class MenuScreen extends StatefulWidget {
 
 class _MenuScreenState extends State<MenuScreen> {
   List<Meter> _meters = [];
+  List<Meter> _favoriteMeters = [];
   Map<int, Tariff> _tariffs = {};
   Map<int, List<Reminder>> _reminders = {};
   Map<int, int> _readingCounts = {};
-  int _openPanelIndex = -1;
+  int _openPanelIndex = 0;
   List<MeterType> _meterTypes = [];
 
   @override
@@ -42,11 +43,8 @@ class _MenuScreenState extends State<MenuScreen> {
   Future<void> _loadData() async {
     try {
       _meterTypes = await AppDb.instance.fetchMeterTypes();
-      if (_meterTypes.isEmpty) {
-        await Logger.log('[MenuScreen] WARN: No meter types found in database.');
-      }
-
       final ms = await AppDb.instance.fetchMeters();
+      final favs = ms.where((m) => m.isFavorite == true).toList();
       final Map<int, Tariff> ts = {};
       final Map<int, List<Reminder>> rems = {};
       final Map<int, int> counts = {};
@@ -66,6 +64,7 @@ class _MenuScreenState extends State<MenuScreen> {
       if (mounted) {
         setState(() {
           _meters = ms;
+          _favoriteMeters = favs;
           _tariffs = ts;
           _reminders = rems;
           _readingCounts = counts;
@@ -73,6 +72,99 @@ class _MenuScreenState extends State<MenuScreen> {
       }
     } catch (e, st) {
       await Logger.log('[MenuScreen] ERROR: Failed to load data: $e\n$st');
+    }
+  }
+
+  Future<void> _toggleFavorite(Meter meter, bool? isFav) async {
+    await AppDb.instance.updateMeter(meter.copyWith(isFavorite: isFav ?? false));
+    await _loadData();
+  }
+
+  Future<void> _showStartwertDialog(Meter meter) async {
+    final startwertCtrl = TextEditingController();
+    final dateCtrl = TextEditingController(text: DateFormat('dd.MM.yyyy').format(DateTime.now()));
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('Startwert für ${meter.name}'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: startwertCtrl,
+              decoration: const InputDecoration(labelText: 'Anfangszählerstand'),
+              keyboardType: TextInputType.numberWithOptions(decimal: true),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: dateCtrl,
+              decoration: const InputDecoration(labelText: 'Datum des Startwerts'),
+              keyboardType: TextInputType.datetime,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(child: const Text('Abbrechen'), onPressed: () => Navigator.pop(ctx, false)),
+          FilledButton(child: const Text('Speichern'), onPressed: () => Navigator.pop(ctx, true)),
+        ],
+      ),
+    );
+    if (ok == true) {
+      await AppDb.instance.saveStartwert(meter.id!, double.tryParse(startwertCtrl.text.replaceAll(',', '.')), dateCtrl.text);
+      await _loadData();
+    }
+  }
+
+  Future<void> _showTarifDialog(Meter meter) async {
+    final costCtrl = TextEditingController();
+    final feeCtrl = TextEditingController();
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('Tarif für ${meter.name}'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: costCtrl,
+              decoration: const InputDecoration(labelText: 'Kosten pro Einheit (€)'),
+              keyboardType: TextInputType.numberWithOptions(decimal: true),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: feeCtrl,
+              decoration: const InputDecoration(labelText: 'Grundgebühr (€)'),
+              keyboardType: TextInputType.numberWithOptions(decimal: true),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(child: const Text('Abbrechen'), onPressed: () => Navigator.pop(ctx, false)),
+          FilledButton(child: const Text('Speichern'), onPressed: () => Navigator.pop(ctx, true)),
+        ],
+      ),
+    );
+    if (ok == true) {
+      await AppDb.instance.saveTarif(meter.id!, double.tryParse(costCtrl.text.replaceAll(',', '.')), double.tryParse(feeCtrl.text.replaceAll(',', '.')));
+      await _loadData();
+    }
+  }
+
+  Future<void> _showDeleteDialog(Meter meter) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('Zähler löschen'),
+        content: Text('Möchtest du "${meter.name}" wirklich löschen?\nDie bisherigen Daten bleiben erhalten.'),
+        actions: [
+          TextButton(child: const Text('Abbrechen'), onPressed: () => Navigator.pop(ctx, false)),
+          FilledButton(child: const Text('Löschen'), onPressed: () => Navigator.pop(ctx, true)),
+        ],
+      ),
+    );
+    if (ok == true) {
+      await AppDb.instance.deleteMeter(meter.id!);
+      await _loadData();
     }
   }
 
@@ -122,189 +214,223 @@ class _MenuScreenState extends State<MenuScreen> {
           ),
         ),
         actions: [
-          TextButton(
-            child: const Text('Abbrechen'),
-            onPressed: () => Navigator.pop(ctx, false),
-          ),
-          FilledButton(
-            child: const Text('Hinzufügen'),
-            onPressed: () => Navigator.pop(ctx, true),
-          ),
+          TextButton(child: const Text('Abbrechen'), onPressed: () => Navigator.pop(ctx, false)),
+          FilledButton(child: const Text('Hinzufügen'), onPressed: () => Navigator.pop(ctx, true)),
         ],
       ),
     );
-
     if (ok == true) {
       await AppDb.instance.insertMeter(
         Meter(
           name: nameCtrl.text.trim(),
           meterTypeId: typeId,
           number: nrCtrl.text.trim(),
-          active: true, // BEHOBEN: 1 -> true
-          isFavorite: true,
+          active: true,
+          isFavorite: false,
         ),
       );
       await _loadData();
     }
-
     nameCtrl.dispose();
     nrCtrl.dispose();
   }
 
-  Future<void> _showAddReadingDialog(Meter meter) async {
-    final valueCtrl = TextEditingController();
-    final htCtrl = TextEditingController();
-    final ntCtrl = TextEditingController();
-    final dateCtrl = TextEditingController(
-      text: DateFormat('dd.MM.yyyy').format(DateTime.now()),
-    );
-
-    // Get the meter type to determine if it's Strom (HT/NT)
-    final meterType = await AppDb.instance.fetchMeterTypeById(meter.meterTypeId);
-    final isElectricityMeter = meterType?.name == 'Strom (HT/NT)';
-    final unit = isElectricityMeter ? 'kWh' : 'm³';
-
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text('Neuer Zählerstand für ${meter.name}'),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (isElectricityMeter) ...[
-                TextField(
-                  controller: htCtrl,
-                  decoration: const InputDecoration(labelText: 'HT (kWh)'),
-                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                ),
-                const SizedBox(height: 16),
-                TextField(
-                  controller: ntCtrl,
-                  decoration: const InputDecoration(labelText: 'NT (kWh)'),
-                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                ),
-              ] else ...[
-                TextField(
-                  controller: valueCtrl,
-                  decoration: InputDecoration(labelText: 'Zählerstand ($unit)'),
-                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: ListView(
+        padding: const EdgeInsets.all(12),
+        children: [
+          // Favoriten Panel
+          Card(
+            elevation: 3,
+            margin: const EdgeInsets.symmetric(vertical: 8),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            child: ExpansionTile(
+              initiallyExpanded: _openPanelIndex == 0,
+              onExpansionChanged: (expanded) {
+                setState(() => _openPanelIndex = expanded ? 0 : -1);
+              },
+              leading: const Icon(Icons.star, color: Colors.orange),
+              title: const Text('Favoriten', style: TextStyle(fontWeight: FontWeight.bold)),
+              children: [
+                ..._meters.map((meter) => Card(
+                  margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  child: CheckboxListTile(
+                    value: meter.isFavorite,
+                    title: Text(meter.name),
+                    subtitle: Text('Nr: ${meter.number}'),
+                    onChanged: (val) => _toggleFavorite(meter, val),
+                  ),
+                )),
+              ],
+            ),
+          ),
+          // Zähler & Tarife Panel - Accordion und Kachel-Design
+          Card(
+            elevation: 3,
+            margin: const EdgeInsets.symmetric(vertical: 8),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            child: ExpansionTile(
+              initiallyExpanded: _openPanelIndex == 1,
+              onExpansionChanged: (expanded) {
+                setState(() => _openPanelIndex = expanded ? 1 : -1);
+              },
+              leading: const Icon(Icons.tune),
+              title: const Text('Zähler & Tarife', style: TextStyle(fontWeight: FontWeight.bold)),
+              children: [
+                ..._meters.map((meter) => Card(
+                  elevation: 2,
+                  margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  child: ListTile(
+                    title: Text(meter.name, style: const TextStyle(fontWeight: FontWeight.bold)),
+                    subtitle: Text('Nr: ${meter.number}'),
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.flag),
+                          tooltip: 'Startwert bearbeiten',
+                          onPressed: () => _showStartwertDialog(meter),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.euro),
+                          tooltip: 'Tarif bearbeiten',
+                          onPressed: () => _showTarifDialog(meter),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.delete),
+                          tooltip: 'Zähler löschen',
+                          onPressed: () => _showDeleteDialog(meter),
+                        ),
+                      ],
+                    ),
+                  ),
+                )),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                  child: ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(
+                      minimumSize: const Size.fromHeight(48),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    ),
+                    icon: const Icon(Icons.add),
+                    label: const Text('Zähler hinzufügen'),
+                    onPressed: _addMeter,
+                  ),
                 ),
               ],
-              const SizedBox(height: 16),
-              TextField(
-                controller: dateCtrl,
-                decoration: const InputDecoration(labelText: 'Datum (dd.MM.yyyy)'),
-                keyboardType: TextInputType.datetime,
-              ),
-            ],
+            ),
           ),
-        ),
-        actions: [
-          TextButton(
-            child: const Text('Abbrechen'),
-            onPressed: () => Navigator.pop(ctx, false),
+          // Benachrichtigungen Panel
+          Card(
+            elevation: 3,
+            margin: const EdgeInsets.symmetric(vertical: 8),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            child: ExpansionTile(
+              initiallyExpanded: _openPanelIndex == 2,
+              onExpansionChanged: (expanded) {
+                setState(() => _openPanelIndex = expanded ? 2 : -1);
+              },
+              leading: const Icon(Icons.notifications),
+              title: const Text('Benachrichtigungen', style: TextStyle(fontWeight: FontWeight.bold)),
+              children: [
+                ..._meters.expand((meter) => [
+                  ListTile(
+                    title: Text(meter.name),
+                    subtitle: Text('Erinnerungen: ${_reminders[meter.id]?.length ?? 0}'),
+                  ),
+                  ...(_reminders[meter.id] ?? [])
+                      .map((reminder) => ListTile(
+                        title: Text(DateFormat('dd.MM.yyyy').format(DateTime.parse(reminder.baseDate))),
+                        subtitle: Text('Wiederholung: ${reminder.repeat}'),
+                        trailing: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            IconButton(
+                              icon: const Icon(Icons.edit_outlined),
+                              onPressed: () => _scheduleNotificationWorkflow(forMeter: meter, edit: reminder),
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.delete_outline),
+                              onPressed: () => _deleteReminder(reminder),
+                            ),
+                          ],
+                        ),
+                      )),
+                  ListTile(
+                    leading: const Icon(Icons.add_alert_outlined),
+                    title: const Text('Neue Erinnerung planen...'),
+                    onTap: () => _scheduleNotificationWorkflow(forMeter: meter),
+                  ),
+                ]),
+              ],
+            ),
           ),
-          FilledButton(
-            child: const Text('Speichern'),
-            onPressed: () => Navigator.pop(ctx, true),
+          // Datensicherung Panel
+          Card(
+            elevation: 3,
+            margin: const EdgeInsets.symmetric(vertical: 8),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            child: ExpansionTile(
+              initiallyExpanded: _openPanelIndex == 3,
+              onExpansionChanged: (expanded) {
+                setState(() => _openPanelIndex = expanded ? 3 : -1);
+              },
+              leading: const Icon(Icons.backup_outlined),
+              title: const Text('Datensicherung', style: TextStyle(fontWeight: FontWeight.bold)),
+              children: [
+                ListTile(
+                  leading: const Icon(Icons.upload_file_outlined),
+                  title: const Text('Backup erstellen'),
+                  subtitle: const Text('Sichert die Datenbank in einem Ordner deiner Wahl.'),
+                  onTap: _createBackup,
+                ),
+                ListTile(
+                  leading: const Icon(Icons.download_for_offline_outlined),
+                  title: const Text('Backup wiederherstellen'),
+                  subtitle: const Text('Überschreibt die aktuellen Daten mit einem Backup.'),
+                  onTap: _restoreBackup,
+                ),
+              ],
+            ),
+          ),
+          // Impressum Panel
+          Card(
+            elevation: 3,
+            margin: const EdgeInsets.symmetric(vertical: 8),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            child: ExpansionTile(
+              initiallyExpanded: _openPanelIndex == 4,
+              onExpansionChanged: (expanded) {
+                setState(() => _openPanelIndex = expanded ? 4 : -1);
+              },
+              leading: const Icon(Icons.info_outline),
+              title: const Text('Impressum', style: TextStyle(fontWeight: FontWeight.bold)),
+              children: const [
+                ListTile(
+                  title: Text(
+                    'Angaben gemäß § 5 TMG\n\n'
+                    'Inhaber: Tobias Hi\n'
+                    'Anschrift: Musterstraße 12, 12345 Musterstadt, Deutschland\n'
+                    'Kontakt: kontakt@musterfirma.example • Tel.: +49 123 456789\n\n'
+                    'USt-IdNr.: DE123456789\n'
+                    'Inhaltlich verantwortlich: Tobias Hi\n\n'
+                    'Haftungsausschluss: Alle Angaben ohne Gewähr. '
+                    'Externe Links wurden bei Verlinkung geprüft; für Inhalte fremder Seiten übernehmen wir keine Haftung.',
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),
     );
-
-    if (ok == true) {
-      final date = DateFormat('dd.MM.yyyy').parseLoose(dateCtrl.text);
-
-      if (isElectricityMeter) {
-        final ht = double.tryParse(htCtrl.text.replaceAll(',', '.'));
-        final nt = double.tryParse(ntCtrl.text.replaceAll(',', '.'));
-        if (ht != null && nt != null) {
-          await AppDb.instance.insertReading(Reading(
-            meterId: meter.id!,
-            date: date,
-            value: null, // No single value for electricity meters
-            ht: ht,
-            nt: nt,
-          ));
-          await _loadData();
-        }
-      } else {
-        final value = double.tryParse(valueCtrl.text.replaceAll(',', '.'));
-        if (value != null) {
-          await AppDb.instance.insertReading(Reading(
-            meterId: meter.id!,
-            date: date,
-            value: value,
-            ht: null,
-            nt: null,
-          ));
-          await _loadData();
-        }
-      }
-    }
-
-    valueCtrl.dispose();
-    htCtrl.dispose();
-    ntCtrl.dispose();
-    dateCtrl.dispose();
   }
 
-  Future<void> _saveTariff(Meter meter) async {
-    final costCtrl = TextEditingController();
-    final feeCtrl = TextEditingController();
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text('Tarif für ${meter.name}'),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: costCtrl,
-                decoration: const InputDecoration(labelText: 'Kosten pro Einheit (€)'),
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: feeCtrl,
-                decoration: const InputDecoration(labelText: 'Grundgebühr (€)'),
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
-              ),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            child: const Text('Abbrechen'),
-            onPressed: () => Navigator.pop(ctx, false),
-          ),
-          FilledButton(
-            child: const Text('Speichern'),
-            onPressed: () => Navigator.pop(ctx, true),
-          ),
-        ],
-      ),
-    );
-
-    if (ok == true) {
-      final cost = double.tryParse(costCtrl.text.replaceAll(',', '.'));
-      final fee = double.tryParse(feeCtrl.text.replaceAll(',', '.')) ?? 0.0;
-      if (cost != null) {
-        await AppDb.instance.insertTariff(Tariff(
-          meterId: meter.id!,
-          costPerUnit: cost,
-          baseFee: fee,
-        ));
-        await _loadData();
-      }
-    }
-
-    costCtrl.dispose();
-    feeCtrl.dispose();
-  }
-
+  // Notification und Backup Funktionen aus vorherigem Stand übernommen
   Future<void> _scheduleNotificationWorkflow({required Meter forMeter, Reminder? edit}) async {
     final dateCtrl = TextEditingController(
       text: edit != null ? DateFormat('dd.MM.yyyy').format(DateTime.parse(edit.baseDate)) : DateFormat('dd.MM.yyyy').format(DateTime.now()),
@@ -376,7 +502,7 @@ class _MenuScreenState extends State<MenuScreen> {
         title: 'Zählerstand erfassen',
         body: 'Erfasse den Zählerstand für ${forMeter.name}',
         whenLocal: date,
-        matchComponents: repeat == RepeatPlan.monthly ? DateTimeComponents.dayOfMonthAndTime : null, // BEHOBEN: flutter_local_notifications. entfernt
+        matchComponents: repeat == RepeatPlan.monthly ? DateTimeComponents.dayOfMonthAndTime : null,
       );
       await _loadData();
     }
@@ -417,168 +543,6 @@ class _MenuScreenState extends State<MenuScreen> {
         const SnackBar(content: Text('Backup wiederhergestellt')),
       );
     }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: ListView(
-        children: [
-          ExpansionPanelList.radio(
-            initialOpenPanelValue: _openPanelIndex,
-            expansionCallback: (index, isExpanded) {
-              setState(() {
-                _openPanelIndex = isExpanded ? -1 : index;
-              });
-            },
-            children: [
-              ExpansionPanelRadio(
-                value: 0,
-                headerBuilder: (context, isExpanded) => ListTile(
-                  leading: const Icon(Icons.add_circle_outline),
-                  title: Text('Zähler hinzufügen', style: Theme.of(context).textTheme.titleMedium),
-                ),
-                body: Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                  child: ListTile(
-                    leading: const Icon(Icons.add),
-                    title: const Text('Neuer Zähler...'),
-                    onTap: _addMeter,
-                  ),
-                ),
-              ),
-              ExpansionPanelRadio(
-                value: 1,
-                headerBuilder: (context, isExpanded) => ListTile(
-                  leading: const Icon(Icons.tune),
-                  title: Text('Zähler verwalten', style: Theme.of(context).textTheme.titleMedium),
-                ),
-                body: Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                  child: Column(
-                    children: _meters
-                        .map((meter) => ListTile(
-                              leading: const Icon(Icons.speed),
-                              title: Text(meter.name),
-                              subtitle: Text('Werte: ${_readingCounts[meter.id] ?? 0}'),
-                              onTap: () => _showAddReadingDialog(meter),
-                            ))
-                        .toList(),
-                  ),
-                ),
-              ),
-              ExpansionPanelRadio(
-                value: 2,
-                headerBuilder: (context, isExpanded) => ListTile(
-                  leading: const Icon(Icons.euro),
-                  title: Text('Tarife', style: Theme.of(context).textTheme.titleMedium),
-                ),
-                body: Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                  child: Column(
-                    children: _meters
-                        .map((meter) => ListTile(
-                              leading: const Icon(Icons.euro),
-                              title: Text('Tarif für ${meter.name}'),
-                              subtitle: Text(_tariffs[meter.id]?.costPerUnit.toString() ?? 'Kein Tarif'),
-                              onTap: () => _saveTariff(meter),
-                            ))
-                        .toList(),
-                  ),
-                ),
-              ),
-              ExpansionPanelRadio(
-                value: 3,
-                headerBuilder: (context, isExpanded) => ListTile(
-                  leading: const Icon(Icons.notifications_outlined),
-                  title: Text('Erinnerungen', style: Theme.of(context).textTheme.titleMedium),
-                ),
-                body: Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                  child: Column(
-                    children: _meters.expand((meter) => [
-                          ListTile(
-                            title: Text(meter.name),
-                            subtitle: Text('Erinnerungen: ${_reminders[meter.id]?.length ?? 0}'),
-                          ),
-                          ...(_reminders[meter.id] ?? [])
-                              .map((reminder) => ListTile(
-                                    title: Text(DateFormat('dd.MM.yyyy').format(DateTime.parse(reminder.baseDate))),
-                                    subtitle: Text('Wiederholung: ${reminder.repeat}'),
-                                    trailing: Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        IconButton(
-                                          icon: const Icon(Icons.edit_outlined),
-                                          onPressed: () => _scheduleNotificationWorkflow(forMeter: meter, edit: reminder),
-                                        ),
-                                        IconButton(
-                                          icon: const Icon(Icons.delete_outline),
-                                          onPressed: () => _deleteReminder(reminder),
-                                        ),
-                                      ],
-                                    ),
-                                  )),
-                          ListTile(
-                            leading: const Icon(Icons.add_alert_outlined),
-                            title: const Text('Neue Erinnerung planen...'),
-                            onTap: () => _scheduleNotificationWorkflow(forMeter: meter),
-                          ),
-                        ]).toList(),
-                  ),
-                ),
-              ),
-              ExpansionPanelRadio(
-                value: 4,
-                headerBuilder: (context, isExpanded) => ListTile(
-                  leading: const Icon(Icons.backup_outlined),
-                  title: Text('Datensicherung', style: Theme.of(context).textTheme.titleMedium),
-                ),
-                body: Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                  child: Column(
-                    children: [
-                      ListTile(
-                        leading: const Icon(Icons.upload_file_outlined),
-                        title: const Text('Backup erstellen'),
-                        subtitle: const Text('Sichert die Datenbank in einem Ordner deiner Wahl.'),
-                        onTap: _createBackup,
-                      ),
-                      ListTile(
-                        leading: const Icon(Icons.download_for_offline_outlined),
-                        title: const Text('Backup wiederherstellen'),
-                        subtitle: const Text('Überschreibt die aktuellen Daten mit einem Backup.'),
-                        onTap: _restoreBackup,
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              ExpansionPanelRadio(
-                value: 5,
-                headerBuilder: (context, isExpanded) => ListTile(
-                  leading: const Icon(Icons.info_outline),
-                  title: Text('Impressum', style: Theme.of(context).textTheme.titleMedium),
-                ),
-                body: const Padding(
-                  padding: EdgeInsets.fromLTRB(16, 0, 16, 16),
-                  child: Text(
-                    'Angaben gemäß § 5 TMG\n\n'
-                    'Inhaber: Tobias Hi\n'
-                    'Anschrift: Musterstraße 12, 12345 Musterstadt, Deutschland\n'
-                    'Kontakt: kontakt@musterfirma.example • Tel.: +49 123 456789\n\n'
-                    'USt-IdNr.: DE123456789\n'
-                    'Inhaltlich verantwortlich: Tobias Hi\n\n'
-                    'Haftungsausschluss: Alle Angaben ohne Gewähr. '
-                    'Externe Links wurden bei Verlinkung geprüft; für Inhalte fremder Seiten übernehmen wir keine Haftung.',
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
   }
 
   @override

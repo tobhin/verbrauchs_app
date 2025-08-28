@@ -43,7 +43,7 @@ class _ErfassenScreenState extends State<ErfassenScreen> {
   Future<void> _loadMeters() async {
     try {
       final allMs = await AppDb.instance.fetchMeters();
-      final favMs = await AppDb.instance.fetchMeters(onlyFavorites: true);
+      final favMs = allMs.where((m) => m.isFavorite == true).toList();
       final allTypes = await AppDb.instance.fetchMeterTypes();
       final Map<int, MeterType> typeMap = {for (var type in allTypes) type.id!: type};
 
@@ -53,9 +53,11 @@ class _ErfassenScreenState extends State<ErfassenScreen> {
           _favoriteMeters = favMs;
           _meterTypes = typeMap;
           _isLoading = false;
+          // Favoriten-Schnellauswahl bevorzugt
+          _selected = favMs.isNotEmpty ? favMs.first : (allMs.isNotEmpty ? allMs.first : null);
         });
-        if (allMs.isNotEmpty) {
-          await _onMeterChanged(allMs.first);
+        if (_selected != null) {
+          await _onMeterChanged(_selected!);
         }
       }
     } catch (e, st) {
@@ -116,6 +118,20 @@ class _ErfassenScreenState extends State<ErfassenScreen> {
     }
   }
 
+  Future<void> _scanImage() async {
+    if (_imagePath == null) return;
+    setState(() => _isScanning = true);
+    try {
+      final result = await OcrService.instance.scanImage(File(_imagePath!));
+      if (result != null && result.isNotEmpty) {
+        _valueCtrl.text = result;
+      }
+    } catch (e) {
+      await Logger.log('[ErfassenScreen] OCR scan error: $e');
+    }
+    setState(() => _isScanning = false);
+  }
+
   Future<void> _save() async {
     if (_formKey.currentState!.validate()) {
       setState(() => _isSaving = true);
@@ -143,6 +159,39 @@ class _ErfassenScreenState extends State<ErfassenScreen> {
     }
   }
 
+  Widget _buildFavoriteQuickSelect() {
+    if (_favoriteMeters.isEmpty) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 20),
+      child: Wrap(
+        spacing: 16,
+        runSpacing: 16,
+        children: _favoriteMeters.map((meter) => GestureDetector(
+          onTap: () {
+            _onMeterChanged(meter);
+          },
+          child: Card(
+            elevation: _selected == meter ? 6 : 2,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+            color: _selected == meter ? Colors.blue[100] : Colors.white,
+            child: Container(
+              width: 130,
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(IconMapper.iconForMeterType(_meterTypes[meter.meterTypeId]?.name ?? ""), size: 36),
+                  const SizedBox(height: 10),
+                  Text(meter.name, style: const TextStyle(fontWeight: FontWeight.bold)),
+                ],
+              ),
+            ),
+          ),
+        )).toList(),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -152,24 +201,19 @@ class _ErfassenScreenState extends State<ErfassenScreen> {
               padding: const EdgeInsets.all(16.0),
               child: Form(
                 key: _formKey,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                child: ListView(
                   children: [
+                    // Favoriten-Schnellauswahl als Kacheln
+                    _buildFavoriteQuickSelect(),
+                    // Zähler Dropdown
                     DropdownButtonFormField<Meter>(
                       value: _selected,
-                      items: _favoriteMeters.isNotEmpty
-                          ? _favoriteMeters
-                              .map((meter) => DropdownMenuItem(
-                                    value: meter,
-                                    child: Text(meter.name),
-                                  ))
-                              .toList()
-                          : _allMeters
-                              .map((meter) => DropdownMenuItem(
-                                    value: meter,
-                                    child: Text(meter.name),
-                                  ))
-                              .toList(),
+                      items: _allMeters
+                          .map((meter) => DropdownMenuItem(
+                                value: meter,
+                                child: Text(meter.name),
+                              ))
+                          .toList(),
                       onChanged: _onMeterChanged,
                       decoration: const InputDecoration(labelText: 'Zähler auswählen'),
                     ),
@@ -191,8 +235,7 @@ class _ErfassenScreenState extends State<ErfassenScreen> {
                       const SizedBox(height: 16),
                       TextField(
                         controller: _valueCtrl,
-                        decoration: InputDecoration(
-                            labelText: 'Zählerstand (${_selectedMeterType!.name == 'Strom (HT/NT)' ? 'kWh' : 'm³'})'),
+                        decoration: InputDecoration(labelText: 'Zählerstand (${_selectedMeterType!.unit})'),
                         keyboardType: const TextInputType.numberWithOptions(decimal: true),
                       ),
                     ],
@@ -215,7 +258,11 @@ class _ErfassenScreenState extends State<ErfassenScreen> {
                               label: const Text('Foto'),
                             ),
                             const SizedBox(width: 8),
-                            const Expanded(child: Text('Wert per Kamera erkennen')),
+                            ElevatedButton.icon(
+                              onPressed: _scanImage,
+                              icon: const Icon(Icons.search),
+                              label: const Text('Wert per Kamera erkennen'),
+                            ),
                           ],
                         ),
                     if (_imagePath != null) ...[
