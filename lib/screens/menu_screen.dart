@@ -422,20 +422,19 @@ class _MenuScreenState extends State<MenuScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: SingleChildScrollView(
-        child: ExpansionPanelList(
-          expansionCallback: (index, isExpanded) {
-            setState(() {
-              // Accordion behavior: only one panel open at a time
-              // If panel is currently expanded, close it; if closed, open it
-              if (isExpanded) {
-                _openPanelIndex = -1; // Close the currently open panel
-              } else {
-                _openPanelIndex = index; // Open the clicked panel (closes any other open panel)
-              }
-            });
-          },
-          children: [
+      body: ExpansionPanelList(
+        expansionCallback: (index, isExpanded) {
+          setState(() {
+            // Accordion behavior: only one panel open at a time
+            // If panel is currently expanded, close it; if closed, open it
+            if (isExpanded) {
+              _openPanelIndex = -1; // Close the currently open panel
+            } else {
+              _openPanelIndex = index; // Open the clicked panel (closes any other open panel)
+            }
+          });
+        },
+        children: [
             _buildPanel(
               index: 0,
               title: 'Zähler hinzufügen',
@@ -555,8 +554,7 @@ class _MenuScreenState extends State<MenuScreen> {
                 ),
               ),
             ),
-          ],
-        ),
+        ],
       ),
     );
   }
