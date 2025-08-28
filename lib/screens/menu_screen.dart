@@ -61,7 +61,6 @@ class _MenuScreenState extends State<MenuScreen> {
         final readings = await AppDb.instance.fetchReadingsForMeter(meter.id!);
         counts[meter.id!] = readings.length;
 
-        // Startwert ist der Reading mit frühestem Datum
         readings.sort((a, b) => a.date.compareTo(b.date));
         starts[meter.id!] = readings.isNotEmpty ? readings.first : null;
       }
@@ -93,51 +92,113 @@ class _MenuScreenState extends State<MenuScreen> {
   }
 
   Future<void> _showStartwertDialog(Meter meter) async {
-    final startwertCtrl = TextEditingController();
-    final dateCtrl = TextEditingController(text: DateFormat('dd.MM.yyyy').format(DateTime.now()));
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text('Startwert für ${meter.name}'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: startwertCtrl,
-              decoration: const InputDecoration(labelText: 'Anfangszählerstand'),
-              keyboardType: TextInputType.numberWithOptions(decimal: true),
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: dateCtrl,
-              decoration: const InputDecoration(labelText: 'Datum des Startwerts'),
-              keyboardType: TextInputType.datetime,
-            ),
+    final alreadyStartwert = _startwerte[meter.id];
+    if (alreadyStartwert != null) {
+      final choice = await showDialog<String>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: Text('Startwert existiert bereits'),
+          content: Text('Für diesen Zähler ist bereits ein Startwert (${alreadyStartwert.value} am ${DateFormat('dd.MM.yyyy').format(alreadyStartwert.date)}) hinterlegt. Was möchtest du tun?'),
+          actions: [
+            TextButton(child: const Text('Abbrechen'), onPressed: () => Navigator.pop(ctx, "cancel")),
+            TextButton(child: const Text('Startwert ändern'), onPressed: () => Navigator.pop(ctx, "edit")),
+            TextButton(child: const Text('Neuen Startwert hinterlegen'), onPressed: () => Navigator.pop(ctx, "new")),
           ],
         ),
-        actions: [
-          TextButton(child: const Text('Abbrechen'), onPressed: () => Navigator.pop(ctx, false)),
-          FilledButton(child: const Text('Speichern'), onPressed: () => Navigator.pop(ctx, true)),
-        ],
-      ),
-    );
-    if (ok == true) {
-      await AppDb.instance.insertReading(Reading(
-        meterId: meter.id!,
-        date: DateFormat('dd.MM.yyyy').parseLoose(dateCtrl.text),
-        value: double.tryParse(startwertCtrl.text.replaceAll(',', '.')),
-        ht: null,
-        nt: null,
-      ));
-      await _loadData();
+      );
+      if (choice == "cancel") return;
+      if (choice == "edit" || choice == "new") {
+        final startwertCtrl = TextEditingController(text: choice == "edit" ? alreadyStartwert.value?.toString() ?? "" : "");
+        final dateCtrl = TextEditingController(text: DateFormat('dd.MM.yyyy').format(alreadyStartwert.date));
+        final ok = await showDialog<bool>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: Text('${choice == "edit" ? "Startwert ändern" : "Startwert neu setzen"} für ${meter.name}'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: startwertCtrl,
+                  decoration: const InputDecoration(labelText: 'Anfangszählerstand'),
+                  keyboardType: TextInputType.numberWithOptions(decimal: true),
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: dateCtrl,
+                  decoration: const InputDecoration(labelText: 'Datum des Startwerts'),
+                  keyboardType: TextInputType.datetime,
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(child: const Text('Abbrechen'), onPressed: () => Navigator.pop(ctx, false)),
+              FilledButton(child: const Text('Speichern'), onPressed: () => Navigator.pop(ctx, true)),
+            ],
+          ),
+        );
+        if (ok == true) {
+          // Startwert überschreiben: Lösche alten und füge neuen hinzu
+          await AppDb.instance.deleteReading(alreadyStartwert.id!);
+          await AppDb.instance.insertReading(Reading(
+            meterId: meter.id!,
+            date: DateFormat('dd.MM.yyyy').parseLoose(dateCtrl.text),
+            value: double.tryParse(startwertCtrl.text.replaceAll(',', '.')),
+            ht: null,
+            nt: null,
+          ));
+          await _loadData();
+        }
+        startwertCtrl.dispose();
+        dateCtrl.dispose();
+      }
+    } else {
+      final startwertCtrl = TextEditingController();
+      final dateCtrl = TextEditingController(text: DateFormat('dd.MM.yyyy').format(DateTime.now()));
+      final ok = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: Text('Startwert für ${meter.name}'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: startwertCtrl,
+                decoration: const InputDecoration(labelText: 'Anfangszählerstand'),
+                keyboardType: TextInputType.numberWithOptions(decimal: true),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: dateCtrl,
+                decoration: const InputDecoration(labelText: 'Datum des Startwerts'),
+                keyboardType: TextInputType.datetime,
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(child: const Text('Abbrechen'), onPressed: () => Navigator.pop(ctx, false)),
+            FilledButton(child: const Text('Speichern'), onPressed: () => Navigator.pop(ctx, true)),
+          ],
+        ),
+      );
+      if (ok == true) {
+        await AppDb.instance.insertReading(Reading(
+          meterId: meter.id!,
+          date: DateFormat('dd.MM.yyyy').parseLoose(dateCtrl.text),
+          value: double.tryParse(startwertCtrl.text.replaceAll(',', '.')),
+          ht: null,
+          nt: null,
+        ));
+        await _loadData();
+      }
+      startwertCtrl.dispose();
+      dateCtrl.dispose();
     }
-    startwertCtrl.dispose();
-    dateCtrl.dispose();
   }
 
   Future<void> _showTarifDialog(Meter meter) async {
-    final costCtrl = TextEditingController();
-    final feeCtrl = TextEditingController();
+    final oldTariff = _tariffs[meter.id];
+    final costCtrl = TextEditingController(text: oldTariff?.costPerUnit?.toString() ?? "");
+    final feeCtrl = TextEditingController(text: oldTariff?.baseFee?.toString() ?? "");
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -165,6 +226,7 @@ class _MenuScreenState extends State<MenuScreen> {
       ),
     );
     if (ok == true) {
+      // Tarif überschreiben (Versionierung nach Bedarf hinzufügen!)
       await AppDb.instance.insertTariff(Tariff(
         meterId: meter.id!,
         costPerUnit: double.tryParse(costCtrl.text.replaceAll(',', '.')) ?? 0.0,
@@ -263,12 +325,9 @@ class _MenuScreenState extends State<MenuScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Helper für Farben von Icons
-    Color _flagColor(Meter meter) =>
-        _startwerte[meter.id] != null ? Colors.green : Colors.grey;
-    Color _euroColor(Meter meter) =>
-        _tariffs[meter.id] != null ? Colors.amber[700]! : Colors.grey;
-    Color _starColor(Meter meter) => Colors.grey; // immer farblos/neutral
+    Color _flagColor(Meter meter) => _startwerte[meter.id] != null ? Colors.green : Colors.grey;
+    Color _euroColor(Meter meter) => _tariffs[meter.id] != null ? Colors.amber[700]! : Colors.grey;
+    Color _starColor(Meter meter) => Colors.grey;
 
     return Scaffold(
       body: ListView(
@@ -282,8 +341,8 @@ class _MenuScreenState extends State<MenuScreen> {
             child: ExpansionTile(
               key: const PageStorageKey('Favoriten'),
               initiallyExpanded: _openPanelIndex == 0,
-              onExpansionChanged: (_) => _handlePanelOpen(0),
-              leading: Icon(Icons.star, color: Colors.grey), // farblos
+              onExpansionChanged: (open) => _handlePanelOpen(0),
+              leading: Icon(Icons.star, color: _starColor(null)), // always grey
               title: const Text('Favoriten', style: TextStyle(fontWeight: FontWeight.bold)),
               children: [
                 ..._meters.map((meter) => Card(
@@ -307,7 +366,7 @@ class _MenuScreenState extends State<MenuScreen> {
             child: ExpansionTile(
               key: const PageStorageKey('ZaehlerTarife'),
               initiallyExpanded: _openPanelIndex == 1,
-              onExpansionChanged: (_) => _handlePanelOpen(1),
+              onExpansionChanged: (open) => _handlePanelOpen(1),
               leading: const Icon(Icons.tune, color: Colors.grey),
               title: const Text('Zähler & Tarife', style: TextStyle(fontWeight: FontWeight.bold)),
               children: [
@@ -355,7 +414,7 @@ class _MenuScreenState extends State<MenuScreen> {
               ],
             ),
           ),
-          // Benachrichtigungen Panel
+          // Benachrichtigungs Panel
           Card(
             elevation: 3,
             margin: const EdgeInsets.symmetric(vertical: 8),
@@ -363,7 +422,7 @@ class _MenuScreenState extends State<MenuScreen> {
             child: ExpansionTile(
               key: const PageStorageKey('Benachrichtigungen'),
               initiallyExpanded: _openPanelIndex == 2,
-              onExpansionChanged: (_) => _handlePanelOpen(2),
+              onExpansionChanged: (open) => _handlePanelOpen(2),
               leading: const Icon(Icons.notifications, color: Colors.grey),
               title: const Text('Benachrichtigungen', style: TextStyle(fontWeight: FontWeight.bold)),
               children: [
@@ -377,7 +436,7 @@ class _MenuScreenState extends State<MenuScreen> {
                         subtitle: Text('Erinnerungen: ${_reminders[meter.id]?.length ?? 0}'),
                       ),
                       ...(_reminders[meter.id] ?? []).map((reminder) => ListTile(
-                        title: Text(DateFormat('dd.MM.yyyy').format(DateTime.parse(reminder.baseDate))),
+                        title: Text(DateFormat('dd.MM.yyyy HH:mm').format(DateTime.parse(reminder.baseDate))),
                         subtitle: Text('Wiederholung: ${reminder.repeat}'),
                         trailing: Row(
                           mainAxisSize: MainAxisSize.min,
@@ -412,7 +471,7 @@ class _MenuScreenState extends State<MenuScreen> {
             child: ExpansionTile(
               key: const PageStorageKey('Datensicherung'),
               initiallyExpanded: _openPanelIndex == 3,
-              onExpansionChanged: (_) => _handlePanelOpen(3),
+              onExpansionChanged: (open) => _handlePanelOpen(3),
               leading: const Icon(Icons.backup_outlined, color: Colors.grey),
               title: const Text('Datensicherung', style: TextStyle(fontWeight: FontWeight.bold)),
               children: [
@@ -447,7 +506,7 @@ class _MenuScreenState extends State<MenuScreen> {
             child: ExpansionTile(
               key: const PageStorageKey('Impressum'),
               initiallyExpanded: _openPanelIndex == 4,
-              onExpansionChanged: (_) => _handlePanelOpen(4),
+              onExpansionChanged: (open) => _handlePanelOpen(4),
               leading: const Icon(Icons.info_outline, color: Colors.grey),
               title: const Text('Impressum', style: TextStyle(fontWeight: FontWeight.bold)),
               children: const [
@@ -476,6 +535,9 @@ class _MenuScreenState extends State<MenuScreen> {
     final dateCtrl = TextEditingController(
       text: edit != null ? DateFormat('dd.MM.yyyy').format(DateTime.parse(edit.baseDate)) : DateFormat('dd.MM.yyyy').format(DateTime.now()),
     );
+    final timeCtrl = TextEditingController(
+      text: edit != null ? DateFormat('HH:mm').format(DateTime.parse(edit.baseDate)) : DateFormat('HH:mm').format(DateTime.now()),
+    );
     RepeatPlan repeat = edit?.repeat ?? RepeatPlan.none;
 
     final ok = await showDialog<bool>(
@@ -490,6 +552,24 @@ class _MenuScreenState extends State<MenuScreen> {
                 controller: dateCtrl,
                 decoration: const InputDecoration(labelText: 'Datum (dd.MM.yyyy)'),
                 keyboardType: TextInputType.datetime,
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: timeCtrl,
+                decoration: const InputDecoration(labelText: 'Uhrzeit (HH:mm)'),
+                keyboardType: TextInputType.datetime,
+                readOnly: true,
+                onTap: () async {
+                  TimeOfDay initialTime = TimeOfDay.now();
+                  try {
+                    final parts = timeCtrl.text.split(':');
+                    initialTime = TimeOfDay(hour: int.parse(parts[0]), minute: int.parse(parts[1]));
+                  } catch (_) {}
+                  final picked = await showTimePicker(context: ctx, initialTime: initialTime);
+                  if (picked != null) {
+                    timeCtrl.text = picked.format(ctx);
+                  }
+                },
               ),
               const SizedBox(height: 16),
               DropdownButtonFormField<RepeatPlan>(
@@ -519,7 +599,11 @@ class _MenuScreenState extends State<MenuScreen> {
     );
 
     if (ok == true) {
-      final date = DateFormat('dd.MM.yyyy').parseLoose(dateCtrl.text);
+      DateTime date = DateFormat('dd.MM.yyyy').parseLoose(dateCtrl.text);
+      try {
+        final timeParts = timeCtrl.text.split(':');
+        date = date.add(Duration(hours: int.parse(timeParts[0]), minutes: int.parse(timeParts[1])));
+      } catch (_) {}
       final notificationId = edit?.notificationId ?? Random().nextInt(1000000);
       final reminder = Reminder(
         id: edit?.id,
@@ -549,6 +633,7 @@ class _MenuScreenState extends State<MenuScreen> {
     }
 
     dateCtrl.dispose();
+    timeCtrl.dispose();
   }
 
   Future<void> _deleteReminder(Reminder reminder) async {

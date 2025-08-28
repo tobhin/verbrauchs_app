@@ -116,36 +116,35 @@ class _ErfassenScreenState extends State<ErfassenScreen> {
     }
   }
 
-Future<void> _scanImage() async {
-  if (_imagePath == null) return;
-  setState(() => _isScanning = true);
-  try {
-    // MeterTypeForOcr dynamisch bestimmen
-    MeterTypeForOcr meterTypeForOcr = MeterTypeForOcr.wasser;
-    if (_selectedMeterType != null) {
-      final name = _selectedMeterType!.name.toLowerCase();
-      if (name.contains('strom')) {
-        meterTypeForOcr = MeterTypeForOcr.strom;
-      } else if (name.contains('gas')) {
-        meterTypeForOcr = MeterTypeForOcr.gas;
-      } else if (name.contains('schmutzwasser')) {
-        meterTypeForOcr = MeterTypeForOcr.schmutzwasser;
+  Future<void> _scanImage() async {
+    if (_imagePath == null) return;
+    setState(() => _isScanning = true);
+    try {
+      MeterTypeForOcr meterTypeForOcr = MeterTypeForOcr.wasser;
+      if (_selectedMeterType != null) {
+        final name = _selectedMeterType!.name.toLowerCase();
+        if (name.contains('strom')) {
+          meterTypeForOcr = MeterTypeForOcr.strom;
+        } else if (name.contains('gas')) {
+          meterTypeForOcr = MeterTypeForOcr.gas;
+        } else if (name.contains('schmutzwasser')) {
+          meterTypeForOcr = MeterTypeForOcr.schmutzwasser;
+        }
       }
+      final result = await tryOcrSmart(
+        imagePath: _imagePath!,
+        meterType: meterTypeForOcr,
+        meterSerial: _selected?.number,
+        lastValue: _lastReading?.value,
+      );
+      if (result != null) {
+        _valueCtrl.text = result.toString();
+      }
+    } catch (e) {
+      await Logger.log('[ErfassenScreen] OCR scan error: $e');
     }
-    final result = await tryOcrSmart(
-      imagePath: _imagePath!,
-      meterType: meterTypeForOcr,
-      meterSerial: _selected?.number,
-      lastValue: _lastReading?.value,
-    );
-    if (result != null) {
-      _valueCtrl.text = result.toString();
-    }
-  } catch (e) {
-    await Logger.log('[ErfassenScreen] OCR scan error: $e');
+    setState(() => _isScanning = false);
   }
-  setState(() => _isScanning = false);
-}
 
   Future<void> _save() async {
     if (_formKey.currentState!.validate()) {
@@ -174,13 +173,21 @@ Future<void> _scanImage() async {
     }
   }
 
-  Widget _buildFavoriteQuickSelect() {
+  Widget _buildFavoriteQuickSelect(BuildContext context) {
     if (_favoriteMeters.isEmpty) return const SizedBox.shrink();
+
+    final width = MediaQuery.of(context).size.width;
+    int crossAxisCount = (width / 160).floor();
+    crossAxisCount = crossAxisCount < 1 ? 1 : crossAxisCount;
+    final cardHeight = 80.0;
+
     return Padding(
       padding: const EdgeInsets.only(bottom: 20),
-      child: Wrap(
-        spacing: 16,
-        runSpacing: 16,
+      child: GridView.count(
+        crossAxisCount: crossAxisCount,
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        childAspectRatio: 2.2, // etwas mehr Breite
         children: _favoriteMeters.map((meter) => GestureDetector(
           onTap: () {
             _onMeterChanged(meter);
@@ -190,14 +197,14 @@ Future<void> _scanImage() async {
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
             color: _selected == meter ? Colors.blue[100] : Colors.white,
             child: Container(
-              width: 130,
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
+              height: cardHeight,
+              alignment: Alignment.center,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(_getMeterIcon(_meterTypes[meter.meterTypeId]?.name ?? meter.name), size: 36),
-                  const SizedBox(height: 10),
-                  Text(meter.name, style: const TextStyle(fontWeight: FontWeight.bold)),
+                  Icon(_getMeterIcon(_meterTypes[meter.meterTypeId]?.name ?? meter.name), size: 32),
+                  const SizedBox(width: 10),
+                  Flexible(child: Text(meter.name, style: const TextStyle(fontWeight: FontWeight.bold), overflow: TextOverflow.ellipsis)),
                 ],
               ),
             ),
@@ -235,7 +242,7 @@ Future<void> _scanImage() async {
                 child: ListView(
                   children: [
                     // Favoriten-Schnellauswahl als Kacheln
-                    _buildFavoriteQuickSelect(),
+                    _buildFavoriteQuickSelect(context),
                     // Zähler Dropdown
                     DropdownButtonFormField<Meter>(
                       value: _selected,
@@ -289,10 +296,12 @@ Future<void> _scanImage() async {
                               label: const Text('Foto'),
                             ),
                             const SizedBox(width: 8),
-                            ElevatedButton.icon(
-                              onPressed: _scanImage,
-                              icon: const Icon(Icons.search),
-                              label: const Text('Wert per Kamera erkennen'),
+                            Expanded(
+                              child: Text(
+                                'Wert per Kamera erfassen',
+                                style: TextStyle(fontSize: 16, color: Colors.grey[700]),
+                                textAlign: TextAlign.left,
+                              ),
                             ),
                           ],
                         ),
