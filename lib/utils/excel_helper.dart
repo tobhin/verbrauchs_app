@@ -24,7 +24,7 @@ Future<void> exportToExcel() async {
     Sheet sheetObject = excel[sheetName];
 
     final meterType = await AppDb.instance.getMeterTypeById(meter.meterTypeId);
-    final isDualTariff = meterType?.name == 'Strom';
+    final isDualTariff = meterType?.name == 'Strom (HT/NT)';
 
     // Header
     if (isDualTariff) {
