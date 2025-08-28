@@ -23,7 +23,7 @@ Future<void> exportToPdf() async {
     if (readings.isEmpty) continue;
 
     final meterType = await AppDb.instance.getMeterTypeById(meter.meterTypeId);
-    final isDualTariff = meterType?.name == 'Strom';
+    final isDualTariff = meterType?.name == 'Strom (HT/NT)';
 
     List<List<String>> tableData = [];
     tableData.add(isDualTariff ? ['Datum', 'HT', 'NT'] : ['Datum', 'Zählerstand']);
