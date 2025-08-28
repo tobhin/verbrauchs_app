@@ -424,6 +424,8 @@ class _MenuScreenState extends State<MenuScreen> {
     return Scaffold(
       body: SingleChildScrollView(
         child: ExpansionPanelList(
+          animationDuration: const Duration(milliseconds: 300),
+          expandedHeaderPadding: EdgeInsets.zero,
           expansionCallback: (index, isExpanded) {
             setState(() {
               // Accordion behavior: only one panel open at a time
