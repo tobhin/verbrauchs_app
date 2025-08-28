@@ -9,7 +9,6 @@ import '../models/reading.dart';
 import '../services/database_service.dart';
 import '../services/ocr_service.dart';
 import '../services/logger_service.dart';
-import '../utils/icon_mapper.dart';
 
 class ErfassenScreen extends StatefulWidget {
   const ErfassenScreen({super.key});
@@ -53,7 +52,6 @@ class _ErfassenScreenState extends State<ErfassenScreen> {
           _favoriteMeters = favMs;
           _meterTypes = typeMap;
           _isLoading = false;
-          // Favoriten-Schnellauswahl bevorzugt
           _selected = favMs.isNotEmpty ? favMs.first : (allMs.isNotEmpty ? allMs.first : null);
         });
         if (_selected != null) {
@@ -118,19 +116,36 @@ class _ErfassenScreenState extends State<ErfassenScreen> {
     }
   }
 
-  Future<void> _scanImage() async {
-    if (_imagePath == null) return;
-    setState(() => _isScanning = true);
-    try {
-      final result = await OcrService.instance.scanImage(File(_imagePath!));
-      if (result != null && result.isNotEmpty) {
-        _valueCtrl.text = result;
+Future<void> _scanImage() async {
+  if (_imagePath == null) return;
+  setState(() => _isScanning = true);
+  try {
+    // MeterTypeForOcr dynamisch bestimmen
+    MeterTypeForOcr meterTypeForOcr = MeterTypeForOcr.wasser;
+    if (_selectedMeterType != null) {
+      final name = _selectedMeterType!.name.toLowerCase();
+      if (name.contains('strom')) {
+        meterTypeForOcr = MeterTypeForOcr.strom;
+      } else if (name.contains('gas')) {
+        meterTypeForOcr = MeterTypeForOcr.gas;
+      } else if (name.contains('schmutzwasser')) {
+        meterTypeForOcr = MeterTypeForOcr.schmutzwasser;
       }
-    } catch (e) {
-      await Logger.log('[ErfassenScreen] OCR scan error: $e');
     }
-    setState(() => _isScanning = false);
+    final result = await tryOcrSmart(
+      imagePath: _imagePath!,
+      meterType: meterTypeForOcr,
+      meterSerial: _selected?.number,
+      lastValue: _lastReading?.value,
+    );
+    if (result != null) {
+      _valueCtrl.text = result.toString();
+    }
+  } catch (e) {
+    await Logger.log('[ErfassenScreen] OCR scan error: $e');
   }
+  setState(() => _isScanning = false);
+}
 
   Future<void> _save() async {
     if (_formKey.currentState!.validate()) {
@@ -180,7 +195,7 @@ class _ErfassenScreenState extends State<ErfassenScreen> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(IconMapper.iconForMeterType(_meterTypes[meter.meterTypeId]?.name ?? ""), size: 36),
+                  Icon(_getMeterIcon(_meterTypes[meter.meterTypeId]?.name ?? meter.name), size: 36),
                   const SizedBox(height: 10),
                   Text(meter.name, style: const TextStyle(fontWeight: FontWeight.bold)),
                 ],
@@ -190,6 +205,22 @@ class _ErfassenScreenState extends State<ErfassenScreen> {
         )).toList(),
       ),
     );
+  }
+
+  IconData _getMeterIcon(String typeName) {
+    switch (typeName.toLowerCase()) {
+      case 'gas': return Icons.local_fire_department;
+      case 'wasser': return Icons.water_drop;
+      case 'strom (ht/nt)': return Icons.bolt;
+      case 'schmutzwasser': return Icons.waves;
+      default: return Icons.speed;
+    }
+  }
+
+  String _getUnit(MeterType? type) {
+    if (type == null) return '';
+    if (type.name.toLowerCase().contains('strom')) return 'kWh';
+    return 'm³';
   }
 
   @override
@@ -235,7 +266,7 @@ class _ErfassenScreenState extends State<ErfassenScreen> {
                       const SizedBox(height: 16),
                       TextField(
                         controller: _valueCtrl,
-                        decoration: InputDecoration(labelText: 'Zählerstand (${_selectedMeterType!.unit})'),
+                        decoration: InputDecoration(labelText: 'Zählerstand (${_getUnit(_selectedMeterType)})'),
                         keyboardType: const TextInputType.numberWithOptions(decimal: true),
                       ),
                     ],

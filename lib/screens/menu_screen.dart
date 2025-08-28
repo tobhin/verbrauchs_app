@@ -13,7 +13,6 @@ import '../models/tariff.dart';
 import '../services/database_service.dart';
 import '../services/notification_service.dart';
 import '../services/logger_service.dart';
-import 'favorites_screen.dart';
 
 class MenuScreen extends StatefulWidget {
   final void Function(ThemeMode) onChangeTheme;
@@ -31,6 +30,7 @@ class _MenuScreenState extends State<MenuScreen> {
   Map<int, Tariff> _tariffs = {};
   Map<int, List<Reminder>> _reminders = {};
   Map<int, int> _readingCounts = {};
+  Map<int, Reading?> _startwerte = {};
   int _openPanelIndex = 0;
   List<MeterType> _meterTypes = [];
 
@@ -48,6 +48,7 @@ class _MenuScreenState extends State<MenuScreen> {
       final Map<int, Tariff> ts = {};
       final Map<int, List<Reminder>> rems = {};
       final Map<int, int> counts = {};
+      final Map<int, Reading?> starts = {};
 
       for (var meter in ms) {
         final tariff = await AppDb.instance.getTariff(meter.id!);
@@ -59,6 +60,10 @@ class _MenuScreenState extends State<MenuScreen> {
 
         final readings = await AppDb.instance.fetchReadingsForMeter(meter.id!);
         counts[meter.id!] = readings.length;
+
+        // Startwert ist der Reading mit frühestem Datum
+        readings.sort((a, b) => a.date.compareTo(b.date));
+        starts[meter.id!] = readings.isNotEmpty ? readings.first : null;
       }
 
       if (mounted) {
@@ -68,11 +73,18 @@ class _MenuScreenState extends State<MenuScreen> {
           _tariffs = ts;
           _reminders = rems;
           _readingCounts = counts;
+          _startwerte = starts;
         });
       }
     } catch (e, st) {
       await Logger.log('[MenuScreen] ERROR: Failed to load data: $e\n$st');
     }
+  }
+
+  void _handlePanelOpen(int index) {
+    setState(() {
+      _openPanelIndex = _openPanelIndex == index ? -1 : index;
+    });
   }
 
   Future<void> _toggleFavorite(Meter meter, bool? isFav) async {
@@ -110,9 +122,17 @@ class _MenuScreenState extends State<MenuScreen> {
       ),
     );
     if (ok == true) {
-      await AppDb.instance.saveStartwert(meter.id!, double.tryParse(startwertCtrl.text.replaceAll(',', '.')), dateCtrl.text);
+      await AppDb.instance.insertReading(Reading(
+        meterId: meter.id!,
+        date: DateFormat('dd.MM.yyyy').parseLoose(dateCtrl.text),
+        value: double.tryParse(startwertCtrl.text.replaceAll(',', '.')),
+        ht: null,
+        nt: null,
+      ));
       await _loadData();
     }
+    startwertCtrl.dispose();
+    dateCtrl.dispose();
   }
 
   Future<void> _showTarifDialog(Meter meter) async {
@@ -145,9 +165,15 @@ class _MenuScreenState extends State<MenuScreen> {
       ),
     );
     if (ok == true) {
-      await AppDb.instance.saveTarif(meter.id!, double.tryParse(costCtrl.text.replaceAll(',', '.')), double.tryParse(feeCtrl.text.replaceAll(',', '.')));
+      await AppDb.instance.insertTariff(Tariff(
+        meterId: meter.id!,
+        costPerUnit: double.tryParse(costCtrl.text.replaceAll(',', '.')) ?? 0.0,
+        baseFee: double.tryParse(feeCtrl.text.replaceAll(',', '.')) ?? 0.0,
+      ));
       await _loadData();
     }
+    costCtrl.dispose();
+    feeCtrl.dispose();
   }
 
   Future<void> _showDeleteDialog(Meter meter) async {
@@ -237,6 +263,13 @@ class _MenuScreenState extends State<MenuScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Helper für Farben von Icons
+    Color _flagColor(Meter meter) =>
+        _startwerte[meter.id] != null ? Colors.green : Colors.grey;
+    Color _euroColor(Meter meter) =>
+        _tariffs[meter.id] != null ? Colors.amber[700]! : Colors.grey;
+    Color _starColor(Meter meter) => Colors.grey; // immer farblos/neutral
+
     return Scaffold(
       body: ListView(
         padding: const EdgeInsets.all(12),
@@ -247,11 +280,10 @@ class _MenuScreenState extends State<MenuScreen> {
             margin: const EdgeInsets.symmetric(vertical: 8),
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
             child: ExpansionTile(
+              key: const PageStorageKey('Favoriten'),
               initiallyExpanded: _openPanelIndex == 0,
-              onExpansionChanged: (expanded) {
-                setState(() => _openPanelIndex = expanded ? 0 : -1);
-              },
-              leading: const Icon(Icons.star, color: Colors.orange),
+              onExpansionChanged: (_) => _handlePanelOpen(0),
+              leading: Icon(Icons.star, color: Colors.grey), // farblos
               title: const Text('Favoriten', style: TextStyle(fontWeight: FontWeight.bold)),
               children: [
                 ..._meters.map((meter) => Card(
@@ -267,17 +299,16 @@ class _MenuScreenState extends State<MenuScreen> {
               ],
             ),
           ),
-          // Zähler & Tarife Panel - Accordion und Kachel-Design
+          // Zähler & Tarife Panel
           Card(
             elevation: 3,
             margin: const EdgeInsets.symmetric(vertical: 8),
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
             child: ExpansionTile(
+              key: const PageStorageKey('ZaehlerTarife'),
               initiallyExpanded: _openPanelIndex == 1,
-              onExpansionChanged: (expanded) {
-                setState(() => _openPanelIndex = expanded ? 1 : -1);
-              },
-              leading: const Icon(Icons.tune),
+              onExpansionChanged: (_) => _handlePanelOpen(1),
+              leading: const Icon(Icons.tune, color: Colors.grey),
               title: const Text('Zähler & Tarife', style: TextStyle(fontWeight: FontWeight.bold)),
               children: [
                 ..._meters.map((meter) => Card(
@@ -291,17 +322,17 @@ class _MenuScreenState extends State<MenuScreen> {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         IconButton(
-                          icon: const Icon(Icons.flag),
+                          icon: Icon(Icons.flag, color: _flagColor(meter)),
                           tooltip: 'Startwert bearbeiten',
                           onPressed: () => _showStartwertDialog(meter),
                         ),
                         IconButton(
-                          icon: const Icon(Icons.euro),
+                          icon: Icon(Icons.euro, color: _euroColor(meter)),
                           tooltip: 'Tarif bearbeiten',
                           onPressed: () => _showTarifDialog(meter),
                         ),
                         IconButton(
-                          icon: const Icon(Icons.delete),
+                          icon: const Icon(Icons.delete, color: Colors.grey),
                           tooltip: 'Zähler löschen',
                           onPressed: () => _showDeleteDialog(meter),
                         ),
@@ -330,20 +361,22 @@ class _MenuScreenState extends State<MenuScreen> {
             margin: const EdgeInsets.symmetric(vertical: 8),
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
             child: ExpansionTile(
+              key: const PageStorageKey('Benachrichtigungen'),
               initiallyExpanded: _openPanelIndex == 2,
-              onExpansionChanged: (expanded) {
-                setState(() => _openPanelIndex = expanded ? 2 : -1);
-              },
-              leading: const Icon(Icons.notifications),
+              onExpansionChanged: (_) => _handlePanelOpen(2),
+              leading: const Icon(Icons.notifications, color: Colors.grey),
               title: const Text('Benachrichtigungen', style: TextStyle(fontWeight: FontWeight.bold)),
               children: [
-                ..._meters.expand((meter) => [
-                  ListTile(
-                    title: Text(meter.name),
-                    subtitle: Text('Erinnerungen: ${_reminders[meter.id]?.length ?? 0}'),
-                  ),
-                  ...(_reminders[meter.id] ?? [])
-                      .map((reminder) => ListTile(
+                ..._meters.map((meter) => Card(
+                  margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                  child: Column(
+                    children: [
+                      ListTile(
+                        title: Text(meter.name),
+                        subtitle: Text('Erinnerungen: ${_reminders[meter.id]?.length ?? 0}'),
+                      ),
+                      ...(_reminders[meter.id] ?? []).map((reminder) => ListTile(
                         title: Text(DateFormat('dd.MM.yyyy').format(DateTime.parse(reminder.baseDate))),
                         subtitle: Text('Wiederholung: ${reminder.repeat}'),
                         trailing: Row(
@@ -360,12 +393,14 @@ class _MenuScreenState extends State<MenuScreen> {
                           ],
                         ),
                       )),
-                  ListTile(
-                    leading: const Icon(Icons.add_alert_outlined),
-                    title: const Text('Neue Erinnerung planen...'),
-                    onTap: () => _scheduleNotificationWorkflow(forMeter: meter),
+                      ListTile(
+                        leading: const Icon(Icons.add_alert_outlined),
+                        title: const Text('Neue Erinnerung planen...'),
+                        onTap: () => _scheduleNotificationWorkflow(forMeter: meter),
+                      ),
+                    ],
                   ),
-                ]),
+                )),
               ],
             ),
           ),
@@ -375,24 +410,31 @@ class _MenuScreenState extends State<MenuScreen> {
             margin: const EdgeInsets.symmetric(vertical: 8),
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
             child: ExpansionTile(
+              key: const PageStorageKey('Datensicherung'),
               initiallyExpanded: _openPanelIndex == 3,
-              onExpansionChanged: (expanded) {
-                setState(() => _openPanelIndex = expanded ? 3 : -1);
-              },
-              leading: const Icon(Icons.backup_outlined),
+              onExpansionChanged: (_) => _handlePanelOpen(3),
+              leading: const Icon(Icons.backup_outlined, color: Colors.grey),
               title: const Text('Datensicherung', style: TextStyle(fontWeight: FontWeight.bold)),
               children: [
-                ListTile(
-                  leading: const Icon(Icons.upload_file_outlined),
-                  title: const Text('Backup erstellen'),
-                  subtitle: const Text('Sichert die Datenbank in einem Ordner deiner Wahl.'),
-                  onTap: _createBackup,
+                Card(
+                  margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                  child: ListTile(
+                    leading: const Icon(Icons.upload_file_outlined),
+                    title: const Text('Backup erstellen'),
+                    subtitle: const Text('Sichert die Datenbank in einem Ordner deiner Wahl.'),
+                    onTap: _createBackup,
+                  ),
                 ),
-                ListTile(
-                  leading: const Icon(Icons.download_for_offline_outlined),
-                  title: const Text('Backup wiederherstellen'),
-                  subtitle: const Text('Überschreibt die aktuellen Daten mit einem Backup.'),
-                  onTap: _restoreBackup,
+                Card(
+                  margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                  child: ListTile(
+                    leading: const Icon(Icons.download_for_offline_outlined),
+                    title: const Text('Backup wiederherstellen'),
+                    subtitle: const Text('Überschreibt die aktuellen Daten mit einem Backup.'),
+                    onTap: _restoreBackup,
+                  ),
                 ),
               ],
             ),
@@ -403,11 +445,10 @@ class _MenuScreenState extends State<MenuScreen> {
             margin: const EdgeInsets.symmetric(vertical: 8),
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
             child: ExpansionTile(
+              key: const PageStorageKey('Impressum'),
               initiallyExpanded: _openPanelIndex == 4,
-              onExpansionChanged: (expanded) {
-                setState(() => _openPanelIndex = expanded ? 4 : -1);
-              },
-              leading: const Icon(Icons.info_outline),
+              onExpansionChanged: (_) => _handlePanelOpen(4),
+              leading: const Icon(Icons.info_outline, color: Colors.grey),
               title: const Text('Impressum', style: TextStyle(fontWeight: FontWeight.bold)),
               children: const [
                 ListTile(
