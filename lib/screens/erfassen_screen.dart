@@ -174,14 +174,6 @@ class _ErfassenScreenState extends State<ErfassenScreen> {
                       decoration: const InputDecoration(labelText: 'Zähler auswählen'),
                     ),
                     const SizedBox(height: 16),
-                    if (_selectedMeterType != null)
-                      TextField(
-                        controller: _valueCtrl,
-                        decoration: InputDecoration(
-                            labelText:
-                                'Zählerstand (${_selectedMeterType!.name == 'Strom (HT/NT)' ? 'kWh' : 'm³'})'),
-                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                      ),
                     if (_selectedMeterType?.name == 'Strom (HT/NT)') ...[
                       const SizedBox(height: 16),
                       TextField(
@@ -193,6 +185,14 @@ class _ErfassenScreenState extends State<ErfassenScreen> {
                       TextField(
                         controller: _ntCtrl,
                         decoration: const InputDecoration(labelText: 'NT (kWh)'),
+                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      ),
+                    ] else if (_selectedMeterType != null) ...[
+                      const SizedBox(height: 16),
+                      TextField(
+                        controller: _valueCtrl,
+                        decoration: InputDecoration(
+                            labelText: 'Zählerstand (${_selectedMeterType!.name == 'Strom (HT/NT)' ? 'kWh' : 'm³'})'),
                         keyboardType: const TextInputType.numberWithOptions(decimal: true),
                       ),
                     ],

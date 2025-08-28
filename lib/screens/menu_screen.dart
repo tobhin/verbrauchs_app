@@ -153,10 +153,16 @@ class _MenuScreenState extends State<MenuScreen> {
 
   Future<void> _showAddReadingDialog(Meter meter) async {
     final valueCtrl = TextEditingController();
+    final htCtrl = TextEditingController();
+    final ntCtrl = TextEditingController();
     final dateCtrl = TextEditingController(
       text: DateFormat('dd.MM.yyyy').format(DateTime.now()),
     );
-    final unit = meter.meterTypeId == 1 ? 'kWh' : 'm³';
+    
+    // Get the meter type to determine if it's Strom (HT/NT)
+    final meterType = await AppDb.instance.fetchMeterTypeById(meter.meterTypeId);
+    final isElectricityMeter = meterType?.name == 'Strom (HT/NT)';
+    final unit = isElectricityMeter ? 'kWh' : 'm³';
 
     final ok = await showDialog<bool>(
       context: context,
@@ -166,11 +172,25 @@ class _MenuScreenState extends State<MenuScreen> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              TextField(
-                controller: valueCtrl,
-                decoration: InputDecoration(labelText: 'Zählerstand ($unit)'),
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
-              ),
+              if (isElectricityMeter) ...[
+                TextField(
+                  controller: htCtrl,
+                  decoration: const InputDecoration(labelText: 'HT (kWh)'),
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: ntCtrl,
+                  decoration: const InputDecoration(labelText: 'NT (kWh)'),
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                ),
+              ] else ...[
+                TextField(
+                  controller: valueCtrl,
+                  decoration: InputDecoration(labelText: 'Zählerstand ($unit)'),
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                ),
+              ],
               const SizedBox(height: 16),
               TextField(
                 controller: dateCtrl,
@@ -194,21 +214,39 @@ class _MenuScreenState extends State<MenuScreen> {
     );
 
     if (ok == true) {
-      final value = double.tryParse(valueCtrl.text.replaceAll(',', '.'));
       final date = DateFormat('dd.MM.yyyy').parseLoose(dateCtrl.text);
-      if (value != null) {
-        await AppDb.instance.insertReading(Reading(
-          meterId: meter.id!,
-          date: date,
-          value: value,
-          ht: meter.meterTypeId == 1 ? value : null,
-          nt: meter.meterTypeId == 1 ? 0.0 : null,
-        ));
-        await _loadData();
+      
+      if (isElectricityMeter) {
+        final ht = double.tryParse(htCtrl.text.replaceAll(',', '.'));
+        final nt = double.tryParse(ntCtrl.text.replaceAll(',', '.'));
+        if (ht != null && nt != null) {
+          await AppDb.instance.insertReading(Reading(
+            meterId: meter.id!,
+            date: date,
+            value: null, // No single value for electricity meters
+            ht: ht,
+            nt: nt,
+          ));
+          await _loadData();
+        }
+      } else {
+        final value = double.tryParse(valueCtrl.text.replaceAll(',', '.'));
+        if (value != null) {
+          await AppDb.instance.insertReading(Reading(
+            meterId: meter.id!,
+            date: date,
+            value: value,
+            ht: null,
+            nt: null,
+          ));
+          await _loadData();
+        }
       }
     }
 
     valueCtrl.dispose();
+    htCtrl.dispose();
+    ntCtrl.dispose();
     dateCtrl.dispose();
   }
 

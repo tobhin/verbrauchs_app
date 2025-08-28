@@ -10,7 +10,9 @@ import '../models/reading.dart';
 import '../models/reading_with_consumption.dart';
 import '../services/database_service.dart';
 import '../services/logger_service.dart';
-import '../widgets/verbrauchs_diagramm.dart';
+import '../utils/excel_helper.dart';
+import '../utils/pdf_helper.dart';
+
 
 class WerteScreen extends StatefulWidget {
   const WerteScreen({super.key});
@@ -145,7 +147,7 @@ class _WerteScreenState extends State<WerteScreen> {
     }
   }
 
-  Future<void> _exportReadings() async {
+  Future<void> _exportReadingsCSV() async {
     try {
       final readings = _readingsWithConsumption
           .where((r) => _selectedYear == null || r.reading.date.year == _selectedYear)
@@ -163,12 +165,40 @@ class _WerteScreenState extends State<WerteScreen> {
       final dir = await getApplicationDocumentsDirectory();
       final path = '${dir.path}/readings_export_${DateTime.now().millisecondsSinceEpoch}.csv';
       await File(path).writeAsString(csvString);
-      await Share.shareXFiles([XFile(path)], text: 'Zählerstände Export');
+      await Share.shareXFiles([XFile(path)], text: 'Zählerstände Export (CSV)');
       await Logger.log('[WerteScreen] Exported readings to $path');
     } catch (e, st) {
-      await Logger.log('[WerteScreen] ERROR: Failed to export readings: $e\n$st');
+      await Logger.log('[WerteScreen] ERROR: Failed to export readings to CSV: $e\n$st');
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Export fehlgeschlagen')),
+        const SnackBar(content: Text('CSV Export fehlgeschlagen')),
+      );
+    }
+  }
+
+  Future<void> _exportReadingsExcel() async {
+    try {
+      await exportToExcel();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Excel Export erfolgreich')),
+      );
+    } catch (e, st) {
+      await Logger.log('[WerteScreen] ERROR: Failed to export readings to Excel: $e\n$st');
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Excel Export fehlgeschlagen')),
+      );
+    }
+  }
+
+  Future<void> _exportReadingsPDF() async {
+    try {
+      await exportToPdf();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('PDF Export erfolgreich')),
+      );
+    } catch (e, st) {
+      await Logger.log('[WerteScreen] ERROR: Failed to export readings to PDF: $e\n$st');
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('PDF Export fehlgeschlagen')),
       );
     }
   }
@@ -194,9 +224,53 @@ class _WerteScreenState extends State<WerteScreen> {
               _reloadReadings();
             },
           ),
-          IconButton(
+          PopupMenuButton<String>(
+            onSelected: (value) {
+              switch (value) {
+                case 'csv':
+                  _exportReadingsCSV();
+                  break;
+                case 'excel':
+                  _exportReadingsExcel();
+                  break;
+                case 'pdf':
+                  _exportReadingsPDF();
+                  break;
+              }
+            },
+            itemBuilder: (context) => [
+              const PopupMenuItem(
+                value: 'csv',
+                child: Row(
+                  children: [
+                    Icon(Icons.table_chart),
+                    SizedBox(width: 8),
+                    Text('Als CSV exportieren'),
+                  ],
+                ),
+              ),
+              const PopupMenuItem(
+                value: 'excel',
+                child: Row(
+                  children: [
+                    Icon(Icons.grid_on),
+                    SizedBox(width: 8),
+                    Text('Als Excel exportieren'),
+                  ],
+                ),
+              ),
+              const PopupMenuItem(
+                value: 'pdf',
+                child: Row(
+                  children: [
+                    Icon(Icons.picture_as_pdf),
+                    SizedBox(width: 8),
+                    Text('Als PDF exportieren'),
+                  ],
+                ),
+              ),
+            ],
             icon: const Icon(Icons.download),
-            onPressed: _exportReadings,
           ),
         ],
       ),
@@ -219,11 +293,7 @@ class _WerteScreenState extends State<WerteScreen> {
               },
             ),
           ),
-          VerbrauchsDiagramm(
-            monatsVerbrauch: {},
-            balkenFarbe: Theme.of(context).colorScheme.primary,
-            einheit: unit,
-          ),
+
           Expanded(
             child: ListView.builder(
               controller: _scrollController,
