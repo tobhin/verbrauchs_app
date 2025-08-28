@@ -426,11 +426,12 @@ class _MenuScreenState extends State<MenuScreen> {
         child: ExpansionPanelList(
           expansionCallback: (index, isExpanded) {
             setState(() {
+              // Accordion behavior: only one panel open at a time
               // If panel is currently expanded, close it; if closed, open it
               if (isExpanded) {
-                _openPanelIndex = -1; // Close the panel
+                _openPanelIndex = -1; // Close the currently open panel
               } else {
-                _openPanelIndex = index; // Open the clicked panel
+                _openPanelIndex = index; // Open the clicked panel (closes any other open panel)
               }
             });
           },
