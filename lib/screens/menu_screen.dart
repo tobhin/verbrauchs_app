@@ -158,7 +158,7 @@ class _MenuScreenState extends State<MenuScreen> {
     final dateCtrl = TextEditingController(
       text: DateFormat('dd.MM.yyyy').format(DateTime.now()),
     );
-    
+
     // Get the meter type to determine if it's Strom (HT/NT)
     final meterType = await AppDb.instance.fetchMeterTypeById(meter.meterTypeId);
     final isElectricityMeter = meterType?.name == 'Strom (HT/NT)';
@@ -215,7 +215,7 @@ class _MenuScreenState extends State<MenuScreen> {
 
     if (ok == true) {
       final date = DateFormat('dd.MM.yyyy').parseLoose(dateCtrl.text);
-      
+
       if (isElectricityMeter) {
         final ht = double.tryParse(htCtrl.text.replaceAll(',', '.'));
         final nt = double.tryParse(ntCtrl.text.replaceAll(',', '.'));
@@ -422,156 +422,161 @@ class _MenuScreenState extends State<MenuScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: ExpansionPanelList(
-        expansionCallback: (index, isExpanded) {
-          setState(() {
-            // Accordion behavior: only one panel open at a time
-            // If panel is currently expanded, close it; if closed, open it
-            if (isExpanded) {
-              _openPanelIndex = -1; // Close the currently open panel
-            } else {
-              _openPanelIndex = index; // Open the clicked panel (closes any other open panel)
-            }
-          });
-        },
+      body: ListView(
         children: [
-            _buildPanel(
-              index: 0,
-              title: 'Zähler hinzufügen',
-              icon: Icons.add_circle_outline,
-              body: Column(
-                children: [
-                  ListTile(
+          ExpansionPanelList.radio(
+            initialOpenPanelValue: _openPanelIndex,
+            expansionCallback: (index, isExpanded) {
+              setState(() {
+                _openPanelIndex = isExpanded ? -1 : index;
+              });
+            },
+            children: [
+              ExpansionPanelRadio(
+                value: 0,
+                headerBuilder: (context, isExpanded) => ListTile(
+                  leading: const Icon(Icons.add_circle_outline),
+                  title: Text('Zähler hinzufügen', style: Theme.of(context).textTheme.titleMedium),
+                ),
+                body: Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                  child: ListTile(
                     leading: const Icon(Icons.add),
                     title: const Text('Neuer Zähler...'),
                     onTap: _addMeter,
                   ),
-                ],
-              ),
-            ),
-            _buildPanel(
-              index: 1,
-              title: 'Zähler verwalten',
-              icon: Icons.tune,
-              body: Column(
-                children: _meters
-                    .map((meter) => ListTile(
-                          leading: const Icon(Icons.speed),
-                          title: Text(meter.name),
-                          subtitle: Text('Werte: ${_readingCounts[meter.id] ?? 0}'),
-                          onTap: () => _showAddReadingDialog(meter),
-                        ))
-                    .toList(),
-              ),
-            ),
-            _buildPanel(
-              index: 2,
-              title: 'Tarife',
-              icon: Icons.euro,
-              body: Column(
-                children: _meters
-                    .map((meter) => ListTile(
-                          leading: const Icon(Icons.euro),
-                          title: Text('Tarif für ${meter.name}'),
-                          subtitle: Text(_tariffs[meter.id]?.costPerUnit.toString() ?? 'Kein Tarif'),
-                          onTap: () => _saveTariff(meter),
-                        ))
-                    .toList(),
-              ),
-            ),
-            _buildPanel(
-              index: 3,
-              title: 'Erinnerungen',
-              icon: Icons.notifications_outlined,
-              body: Column(
-                children: _meters.expand((meter) => [
-                      ListTile(
-                        title: Text(meter.name),
-                        subtitle: Text('Erinnerungen: ${_reminders[meter.id]?.length ?? 0}'),
-                      ),
-                      ...(_reminders[meter.id] ?? [])
-                          .map((reminder) => ListTile(
-                                title: Text(DateFormat('dd.MM.yyyy').format(DateTime.parse(reminder.baseDate))),
-                                subtitle: Text('Wiederholung: ${reminder.repeat}'),
-                                trailing: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    IconButton(
-                                      icon: const Icon(Icons.edit_outlined),
-                                      onPressed: () => _scheduleNotificationWorkflow(forMeter: meter, edit: reminder),
-                                    ),
-                                    IconButton(
-                                      icon: const Icon(Icons.delete_outline),
-                                      onPressed: () => _deleteReminder(reminder),
-                                    ),
-                                  ],
-                                ),
-                              )),
-                      ListTile(
-                        leading: const Icon(Icons.add_alert_outlined),
-                        title: const Text('Neue Erinnerung planen...'),
-                        onTap: () => _scheduleNotificationWorkflow(forMeter: meter),
-                      ),
-                    ]).toList(),
-              ),
-            ),
-            _buildPanel(
-              index: 4,
-              title: 'Datensicherung',
-              icon: Icons.backup_outlined,
-              body: Column(
-                children: [
-                  ListTile(
-                    leading: const Icon(Icons.upload_file_outlined),
-                    title: const Text('Backup erstellen'),
-                    subtitle: const Text('Sichert die Datenbank in einem Ordner deiner Wahl.'),
-                    onTap: _createBackup,
-                  ),
-                  ListTile(
-                    leading: const Icon(Icons.download_for_offline_outlined),
-                    title: const Text('Backup wiederherstellen'),
-                    subtitle: const Text('Überschreibt die aktuellen Daten mit einem Backup.'),
-                    onTap: _restoreBackup,
-                  ),
-                ],
-              ),
-            ),
-            _buildPanel(
-              index: 5,
-              title: 'Impressum',
-              icon: Icons.info_outline,
-              body: const Padding(
-                padding: EdgeInsets.only(bottom: 8.0),
-                child: Text(
-                  'Angaben gemäß § 5 TMG\n\n'
-                  'Inhaber: Tobias Hi\n'
-                  'Anschrift: Musterstraße 12, 12345 Musterstadt, Deutschland\n'
-                  'Kontakt: kontakt@musterfirma.example • Tel.: +49 123 456789\n\n'
-                  'USt-IdNr.: DE123456789\n'
-                  'Inhaltlich verantwortlich: Tobias Hi\n\n'
-                  'Haftungsausschluss: Alle Angaben ohne Gewähr. '
-                  'Externe Links wurden bei Verlinkung geprüft; für Inhalte fremder Seiten übernehmen wir keine Haftung.',
                 ),
               ),
-            ),
+              ExpansionPanelRadio(
+                value: 1,
+                headerBuilder: (context, isExpanded) => ListTile(
+                  leading: const Icon(Icons.tune),
+                  title: Text('Zähler verwalten', style: Theme.of(context).textTheme.titleMedium),
+                ),
+                body: Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                  child: Column(
+                    children: _meters
+                        .map((meter) => ListTile(
+                              leading: const Icon(Icons.speed),
+                              title: Text(meter.name),
+                              subtitle: Text('Werte: ${_readingCounts[meter.id] ?? 0}'),
+                              onTap: () => _showAddReadingDialog(meter),
+                            ))
+                        .toList(),
+                  ),
+                ),
+              ),
+              ExpansionPanelRadio(
+                value: 2,
+                headerBuilder: (context, isExpanded) => ListTile(
+                  leading: const Icon(Icons.euro),
+                  title: Text('Tarife', style: Theme.of(context).textTheme.titleMedium),
+                ),
+                body: Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                  child: Column(
+                    children: _meters
+                        .map((meter) => ListTile(
+                              leading: const Icon(Icons.euro),
+                              title: Text('Tarif für ${meter.name}'),
+                              subtitle: Text(_tariffs[meter.id]?.costPerUnit.toString() ?? 'Kein Tarif'),
+                              onTap: () => _saveTariff(meter),
+                            ))
+                        .toList(),
+                  ),
+                ),
+              ),
+              ExpansionPanelRadio(
+                value: 3,
+                headerBuilder: (context, isExpanded) => ListTile(
+                  leading: const Icon(Icons.notifications_outlined),
+                  title: Text('Erinnerungen', style: Theme.of(context).textTheme.titleMedium),
+                ),
+                body: Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                  child: Column(
+                    children: _meters.expand((meter) => [
+                          ListTile(
+                            title: Text(meter.name),
+                            subtitle: Text('Erinnerungen: ${_reminders[meter.id]?.length ?? 0}'),
+                          ),
+                          ...(_reminders[meter.id] ?? [])
+                              .map((reminder) => ListTile(
+                                    title: Text(DateFormat('dd.MM.yyyy').format(DateTime.parse(reminder.baseDate))),
+                                    subtitle: Text('Wiederholung: ${reminder.repeat}'),
+                                    trailing: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        IconButton(
+                                          icon: const Icon(Icons.edit_outlined),
+                                          onPressed: () => _scheduleNotificationWorkflow(forMeter: meter, edit: reminder),
+                                        ),
+                                        IconButton(
+                                          icon: const Icon(Icons.delete_outline),
+                                          onPressed: () => _deleteReminder(reminder),
+                                        ),
+                                      ],
+                                    ),
+                                  )),
+                          ListTile(
+                            leading: const Icon(Icons.add_alert_outlined),
+                            title: const Text('Neue Erinnerung planen...'),
+                            onTap: () => _scheduleNotificationWorkflow(forMeter: meter),
+                          ),
+                        ]).toList(),
+                  ),
+                ),
+              ),
+              ExpansionPanelRadio(
+                value: 4,
+                headerBuilder: (context, isExpanded) => ListTile(
+                  leading: const Icon(Icons.backup_outlined),
+                  title: Text('Datensicherung', style: Theme.of(context).textTheme.titleMedium),
+                ),
+                body: Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                  child: Column(
+                    children: [
+                      ListTile(
+                        leading: const Icon(Icons.upload_file_outlined),
+                        title: const Text('Backup erstellen'),
+                        subtitle: const Text('Sichert die Datenbank in einem Ordner deiner Wahl.'),
+                        onTap: _createBackup,
+                      ),
+                      ListTile(
+                        leading: const Icon(Icons.download_for_offline_outlined),
+                        title: const Text('Backup wiederherstellen'),
+                        subtitle: const Text('Überschreibt die aktuellen Daten mit einem Backup.'),
+                        onTap: _restoreBackup,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              ExpansionPanelRadio(
+                value: 5,
+                headerBuilder: (context, isExpanded) => ListTile(
+                  leading: const Icon(Icons.info_outline),
+                  title: Text('Impressum', style: Theme.of(context).textTheme.titleMedium),
+                ),
+                body: const Padding(
+                  padding: EdgeInsets.fromLTRB(16, 0, 16, 16),
+                  child: Text(
+                    'Angaben gemäß § 5 TMG\n\n'
+                    'Inhaber: Tobias Hi\n'
+                    'Anschrift: Musterstraße 12, 12345 Musterstadt, Deutschland\n'
+                    'Kontakt: kontakt@musterfirma.example • Tel.: +49 123 456789\n\n'
+                    'USt-IdNr.: DE123456789\n'
+                    'Inhaltlich verantwortlich: Tobias Hi\n\n'
+                    'Haftungsausschluss: Alle Angaben ohne Gewähr. '
+                    'Externe Links wurden bei Verlinkung geprüft; für Inhalte fremder Seiten übernehmen wir keine Haftung.',
+                  ),
+                ),
+              ),
+            ],
+          ),
         ],
-      ),
-    );
-  }
-
-  ExpansionPanel _buildPanel({required int index, required String title, required IconData icon, required Widget body}) {
-    return ExpansionPanel(
-      canTapOnHeader: true,
-      isExpanded: _openPanelIndex == index,
-      headerBuilder: (BuildContext context, bool isExpanded) {
-        return ListTile(
-          leading: Icon(icon),
-          title: Text(title, style: Theme.of(context).textTheme.titleMedium),
-        );
-      },
-      body: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-        child: body,
       ),
     );
   }
