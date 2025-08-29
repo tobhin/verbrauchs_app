@@ -342,7 +342,7 @@ class _MenuScreenState extends State<MenuScreen> {
               key: const PageStorageKey('Favoriten'),
               initiallyExpanded: _openPanelIndex == 0,
               onExpansionChanged: (open) => _handlePanelOpen(0),
-              leading: Icon(Icons.star, color: _starColor(null)), // always grey
+              leading: const Icon(Icons.star, color: Colors.grey),
               title: const Text('Favoriten', style: TextStyle(fontWeight: FontWeight.bold)),
               children: [
                 ..._meters.map((meter) => Card(
