@@ -1,5 +1,3 @@
-// Datei: lib/utils/icon_mapper.dart
-
 import 'package:flutter/material.dart';
 
 // Eine einfache Klasse, die uns hilft, einen String in ein IconData-Objekt umzuwandeln.
@@ -14,6 +12,9 @@ class IconMapper {
     'heat_pump': Icons.heat_pump,
     'add': Icons.add,
     'question_mark': Icons.question_mark,
+    // Hinzugefügt, um Icons aus der Datenbank-Seed-Funktion zu unterstützen
+    'water': Icons.waves,
+    'local_gas_station': Icons.local_gas_station,
   };
 
   static IconData getIcon(String iconName) {

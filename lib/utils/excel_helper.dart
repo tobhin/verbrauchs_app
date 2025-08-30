@@ -5,7 +5,6 @@ import 'package:excel/excel.dart';
 import 'package:intl/intl.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
-// import '../models/meter.dart'; // War unbenutzt
 import '../services/database_service.dart';
 
 Future<void> exportToExcel() async {
@@ -29,29 +28,50 @@ Future<void> exportToExcel() async {
     // Header
     if (isDualTariff) {
       sheetObject.appendRow([
-        TextCellValue('Datum'), // KORRIGIERT: "const" entfernt
-        TextCellValue('HT'),    // KORRIGIERT: "const" entfernt
-        TextCellValue('NT')     // KORRIGIERT: "const" entfernt
+        TextCellValue('Datum'),
+        TextCellValue('HT-Stand'),
+        TextCellValue('NT-Stand'),
+        TextCellValue('HT-Verbrauch'),
+        TextCellValue('NT-Verbrauch'),
+        TextCellValue('Gesamtverbrauch'),
       ]);
     } else {
       sheetObject.appendRow([
-        TextCellValue('Datum'),       // KORRIGIERT: "const" entfernt
-        TextCellValue('Zählerstand') // KORRIGIERT: "const" entfernt
+        TextCellValue('Datum'),
+        TextCellValue('Zählerstand'),
+        TextCellValue('Verbrauch'),
       ]);
     }
 
-    // Data Rows
-    for (final reading in readings) {
+    // Data Rows mit Verbrauchsberechnung
+    for (var i = 0; i < readings.length; i++) {
+      final current = readings[i];
       if (isDualTariff) {
+        double? htConsumption;
+        double? ntConsumption;
+        if (i < readings.length - 1) {
+          final previous = readings[i + 1];
+          htConsumption = (current.ht ?? 0.0) - (previous.ht ?? 0.0);
+          ntConsumption = (current.nt ?? 0.0) - (previous.nt ?? 0.0);
+        }
         sheetObject.appendRow([
-          TextCellValue(DateFormat('dd.MM.yyyy').format(reading.date)),
-          DoubleCellValue(reading.ht ?? 0.0),
-          DoubleCellValue(reading.nt ?? 0.0),
+          TextCellValue(DateFormat('dd.MM.yyyy').format(current.date)),
+          DoubleCellValue(current.ht ?? 0.0),
+          DoubleCellValue(current.nt ?? 0.0),
+          if (htConsumption != null) DoubleCellValue(htConsumption) else TextCellValue(''),
+          if (ntConsumption != null) DoubleCellValue(ntConsumption) else TextCellValue(''),
+          if (htConsumption != null && ntConsumption != null) DoubleCellValue(htConsumption + ntConsumption) else TextCellValue(''),
         ]);
       } else {
+        double? consumption;
+        if (i < readings.length - 1) {
+          final previous = readings[i + 1];
+          consumption = (current.value ?? 0.0) - (previous.value ?? 0.0);
+        }
         sheetObject.appendRow([
-          TextCellValue(DateFormat('dd.MM.yyyy').format(reading.date)),
-          DoubleCellValue(reading.value ?? 0.0),
+          TextCellValue(DateFormat('dd.MM.yyyy').format(current.date)),
+          DoubleCellValue(current.value ?? 0.0),
+          if (consumption != null) DoubleCellValue(consumption) else TextCellValue(''),
         ]);
       }
     }

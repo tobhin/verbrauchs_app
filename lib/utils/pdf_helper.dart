@@ -1,14 +1,12 @@
 // Datei: lib/utils/pdf_helper.dart
 
 import 'dart:io';
-// import 'package:flutter/services.dart'; // War unbenutzt
 import 'package:intl/intl.dart';
 import 'package:path_provider/path_provider.dart';
-// import 'package:pdf/pdf.dart'; // War unbenutzt
+import 'package:pdf/pdf.dart'; // KORREKTUR: Fehlender Import
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 import 'package:share_plus/share_plus.dart';
-// import '../models/meter.dart'; // War unbenutzt
 import '../services/database_service.dart';
 
 Future<void> exportToPdf() async {
@@ -25,41 +23,68 @@ Future<void> exportToPdf() async {
     final meterType = await AppDb.instance.fetchMeterTypeById(meter.meterTypeId);
     final isDualTariff = meterType?.name == 'Strom (HT/NT)';
 
-    List<List<String>> tableData = [];
-    tableData.add(isDualTariff ? ['Datum', 'HT', 'NT'] : ['Datum', 'Zählerstand']);
+    // Spalten-Header definieren
+    final headers = isDualTariff
+        ? ['Datum', 'HT-Stand', 'NT-Stand', 'HT-Verbr.', 'NT-Verbr.', 'Gesamtverbr.']
+        : ['Datum', 'Zählerstand', 'Verbrauch'];
 
-    for (final reading in readings) {
-      tableData.add(isDualTariff
-          ? [
-              DateFormat('dd.MM.yyyy').format(reading.date),
-              reading.ht?.toStringAsFixed(2) ?? '-',
-              reading.nt?.toStringAsFixed(2) ?? '-',
-            ]
-          : [
-              DateFormat('dd.MM.yyyy').format(reading.date),
-              reading.value?.toStringAsFixed(2) ?? '-',
-            ]);
+    List<List<String>> tableData = [headers];
+
+    // Datenzeilen mit Verbrauchsberechnung erstellen
+    for (var i = 0; i < readings.length; i++) {
+      final current = readings[i];
+      if (isDualTariff) {
+        String htConsumption = '-';
+        String ntConsumption = '-';
+        String totalConsumption = '-';
+
+        if (i < readings.length - 1) {
+          final previous = readings[i + 1];
+          final htCons = (current.ht ?? 0.0) - (previous.ht ?? 0.0);
+          final ntCons = (current.nt ?? 0.0) - (previous.nt ?? 0.0);
+          htConsumption = htCons.toStringAsFixed(2);
+          ntConsumption = ntCons.toStringAsFixed(2);
+          totalConsumption = (htCons + ntCons).toStringAsFixed(2);
+        }
+        tableData.add([
+          DateFormat('dd.MM.yyyy').format(current.date),
+          current.ht?.toStringAsFixed(2) ?? '-',
+          current.nt?.toStringAsFixed(2) ?? '-',
+          htConsumption,
+          ntConsumption,
+          totalConsumption,
+        ]);
+      } else {
+        String consumption = '-';
+        if (i < readings.length - 1) {
+          final previous = readings[i + 1];
+          final cons = (current.value ?? 0.0) - (previous.value ?? 0.0);
+          consumption = cons.toStringAsFixed(2);
+        }
+        tableData.add([
+          DateFormat('dd.MM.yyyy').format(current.date),
+          current.value?.toStringAsFixed(2) ?? '-',
+          consumption,
+        ]);
+      }
     }
 
     pdf.addPage(
-      pw.Page(
+      pw.MultiPage(
+        pageFormat: PdfPageFormat.a4,
         build: (pw.Context context) {
-          return pw.Column(
-            crossAxisAlignment: pw.CrossAxisAlignment.start,
-            children: [
-              pw.Text(
-                '${meter.name} (${meter.number ?? 'N/A'})',
-                style: pw.TextStyle(font: boldFont, fontSize: 18),
-              ),
-              pw.SizedBox(height: 16),
-              // KORRIGIERT: Veraltete Methode ersetzt
-              pw.TableHelper.fromTextArray(
-                headerStyle: pw.TextStyle(font: boldFont),
-                cellStyle: pw.TextStyle(font: font),
-                data: tableData,
-              ),
-            ],
-          );
+          return [
+            pw.Text(
+              '${meter.name} (${meter.number ?? 'N/A'})',
+              style: pw.TextStyle(font: boldFont, fontSize: 18),
+            ),
+            pw.SizedBox(height: 16),
+            pw.Table.fromTextArray(
+              headerStyle: pw.TextStyle(font: boldFont),
+              cellStyle: pw.TextStyle(font: font),
+              data: tableData,
+            ),
+          ];
         },
       ),
     );

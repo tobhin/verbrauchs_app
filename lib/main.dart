@@ -1,24 +1,28 @@
+// lib/main.dart
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:timezone/data/latest.dart' as tz;
+import 'package:timezone/timezone.dart' as tz; // HINZUGEFÜGT für den Zugriff auf getLocation
 import 'package:intl/date_symbol_data_local.dart';
 import 'app.dart';
-import 'services/logger_service.dart'; // HINZUGEFÜGT für Logger
+import 'services/logger_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Initialisiert die Datumsformatierung für die gesamte App
   await initializeDateFormatting('de_DE', null);
 
+  // Zeitzonen-Datenbank initialisieren
   tz.initializeTimeZones();
+  // MODIFIZIERT: Lokale Zeitzone für Deutschland setzen. Dies ist entscheidend für geplante Benachrichtigungen.
+  tz.setLocalLocation(tz.getLocation('Europe/Berlin'));
 
   await SystemChrome.setPreferredOrientations([
     DeviceOrientation.portraitUp,
     DeviceOrientation.portraitDown,
   ]);
 
-  // HINZUGEFÜGT: Globales Error-Handling
   FlutterError.onError = (details) {
     Logger.log('Flutter error: ${details.exceptionAsString()}');
   };

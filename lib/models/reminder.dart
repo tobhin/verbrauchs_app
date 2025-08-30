@@ -1,3 +1,5 @@
+// lib/models/reminder.dart
+
 enum RepeatPlan { none, weekly, monthly, yearly }
 
 class Reminder {
@@ -14,6 +16,23 @@ class Reminder {
     required this.repeat,
     this.notificationId,
   });
+
+  // MODIFIZIERT: copyWith-Methode hinzugefügt.
+  Reminder copyWith({
+    int? id,
+    int? meterId,
+    String? baseDate,
+    RepeatPlan? repeat,
+    int? notificationId,
+  }) {
+    return Reminder(
+      id: id ?? this.id,
+      meterId: meterId ?? this.meterId,
+      baseDate: baseDate ?? this.baseDate,
+      repeat: repeat ?? this.repeat,
+      notificationId: notificationId ?? this.notificationId,
+    );
+  }
 
   Map<String, Object?> toMap() => {
         'id': id,

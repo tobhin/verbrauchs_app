@@ -1,3 +1,5 @@
+// lib/services/notification_service.dart
+
 import 'dart:io';
 import 'dart:math' as math;
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
@@ -131,7 +133,8 @@ class NotificationService {
         tzTime,
         NotificationDetails(android: _channel()),
         androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-        uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
+        // MODIFIZIERT: Die folgende Zeile wurde entfernt, da sie in der neuen Paketversion nicht mehr existiert.
+        // uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
         matchDateTimeComponents: matchComponents,
         payload: 'meter-reminder',
       );
